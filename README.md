@@ -4,10 +4,10 @@
 4. Play Game.
 
 # Planned Features
-* ModUI settings
+* Settings
     * More preset colours
+        * Rainbow?
     * Customisable colours
-* Rainbow?
 * Fix top of leaves in park
 
 # Compiling
