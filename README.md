@@ -4,7 +4,7 @@
 4. Play Game.
 
 # Planned Features
-* ModUI settings
+* Settings
     * More preset colours
     * Customisable colours
 * Rainbow?
