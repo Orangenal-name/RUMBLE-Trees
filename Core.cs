@@ -166,8 +166,8 @@ namespace RUMBLECherryBlossoms
                         }
                         leafMaterial.SetColor(LCT1, shades[2]);
                         leafMaterial.SetColor(LCB1, shades[0]);
-                        if (sceneID == 3) leafMaterial.SetColor(LCT2, shades[2]);
-                        if (sceneID != 2) leafMaterial.SetColor(LCB2, shades[0]);
+                        if (sceneID == 4) leafMaterial.SetColor(LCT2, shades[2]);
+                        if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
                         // MelonLogger.Msg($"Resulting colour: {material.GetColor(LCT2)}");
                     }
                 }
