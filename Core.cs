@@ -2,14 +2,19 @@
 using UnityEngine;
 using UnityEngine.VFX;
 using RumbleModUI;
-using BuildInfo = MelonLoader.BuildInfo;
+using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 
-[assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", "1.0.0", "Orangenal", null)]
+[assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
 [assembly: MelonColor(255, 219, 138, 230)]
 
 namespace RUMBLECherryBlossoms
 {
+    public static class BuildInfo
+    {
+        public const string Version = "1.1.0";
+    }
+
     public class Core : MelonMod
     {
         internal static Color[] shades = new Color[3];
