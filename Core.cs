@@ -113,10 +113,6 @@ namespace RUMBLECherryBlossoms
 
         public void OnSave()
         {
-            MelonLogger.Msg("Saving...");
-            MelonLogger.Msg($"Current map no: {sceneID}");
-            MelonLogger.Msg($"Current map value: {RumbleTrees.Settings[sceneID].SavedValue}");
-            MelonLogger.Msg($"wasSceneChanged: {wasSceneChanged}");
             if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
             {
                 UpdateColours(cherryColour, wasSceneChanged);
