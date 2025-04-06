@@ -6,8 +6,8 @@
 # Planned Features
 * Settings
     * More preset colours
+        * Rainbow?
     * Customisable colours
-* Rainbow?
 * Fix top of leaves in park
 
 # Compiling
