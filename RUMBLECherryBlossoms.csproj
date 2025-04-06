@@ -150,6 +150,9 @@
 		<Reference Include="Il2Cpp__Generated">
 			<HintPath>D:\Program Files\Steam\steamapps\common\RUMBLE\MelonLoader\Il2CppAssemblies\Il2Cpp__Generated.dll</HintPath>
 		</Reference>
+		<Reference Include="ModUI">
+		  <HintPath>..\..\Program Files\Steam\steamapps\common\RUMBLE\Mods\ModUI.dll</HintPath>
+		</Reference>
 		<Reference Include="Unity.Burst">
 			<HintPath>D:\Program Files\Steam\steamapps\common\RUMBLE\MelonLoader\Il2CppAssemblies\Unity.Burst.dll</HintPath>
 		</Reference>
