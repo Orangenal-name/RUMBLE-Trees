@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.VFX;
 using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
+using UnityEngine.PlayerLoop;
+using System.Collections;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -15,42 +17,58 @@ namespace RUMBLECherryBlossoms
         public const string Version = "1.1.0";
     }
 
+    public class Validation : ValidationParameters
+    {
+        private string[] themes = ["cherry", "orange"];
+        public override bool DoValidation(string Input)
+        {
+            if (!themes.Contains(Input.ToLower())) return false;
+            return true;
+        }
+    }
+
     public class Core : MelonMod
     {
         internal static Color[] shades = new Color[3];
         internal static Color[] originalShades = new Color[3];
         private bool[] originalSaved = [false, false];
+        private Color selectedColour;
         private Color cherryColour = new Color(0.86f, 0.54f, 0.9f, 1f);
+        private Color orangeColour = new Color(1.0f, 0.44f, 0.0f, 1f);
         private int LCT1 = 1475; // Top of Leaves
         private int LCB1 = 1476; // Bottom of Leaves
         private int LCT2 = 1477; // Top of Leaves
         private int LCB2 = 1479; // Bottom of Leaves
         private int FLG = 1110; // Falling leaves gradient
         private Material leafMaterial;
-        private MeshRenderer renderer;
+        private List<MeshRenderer> renderers = new List<MeshRenderer>();
         private List<GameObject> leafObjects = new List<GameObject>();
         private GameObject VFXsObject;
         private int sceneID = -1;
         private bool wasSceneChanged = false;
+        private bool wasLightmapChanged = false;
+        private Texture2D lightmap = null;
+        private Il2CppAssetBundle assetBundle = null;
         Mod RumbleTrees = new Mod();
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
             LCB1 = Shader.PropertyToID("Color_6f942b46fda341409751e4e7f292de58"); // Ditto
-            LCT2 = Shader.PropertyToID("Color_703ec75398a14bf19c79ac19fa909a6f"); // Ditto
+            LCT2 = Shader.PropertyToID("Vector3_fa2c0c5c11884cdfbeb10e0460312f5c"); // Ditto
             LCB2 = Shader.PropertyToID("Color_d75e4f72dbfb4e7187f1c2d80558c414"); // Ditto
             FLG = Shader.PropertyToID("Leaf Color Gradient"); // Found in sharedassets0 path ID 371 (VisualEffectAsset Falling leaves)
 
             leafObjects = new List<GameObject>();
+            renderers.Clear();
             VFXsObject = null;
             wasSceneChanged = false;
+            wasLightmapChanged = false;
 
             if (sceneName == "Map0")
             {
                 leafObjects.Add(GameObject.Find("Map0_production/Main static group/leave"));
                 sceneID = 2;
-                // MelonLogger.Msg($"Colour 3: {Shader.PropertyToID("Color_703ec75398a14bf19c79ac19fa909a6f")}"); // The alpha is 0??
                 // MelonLogger.Msg($"Vector: {Shader.PropertyToID("Vector3_fa2c0c5c11884cdfbeb10e0460312f5c")}"); // idk what this is for but it's certainly there
             }
             else if (sceneName == "Map1")
@@ -87,8 +105,54 @@ namespace RUMBLECherryBlossoms
 
             if (!(bool)RumbleTrees.Settings[sceneID].SavedValue) return;
 
-            UpdateColours(cherryColour);
+            UpdateColours();
             wasSceneChanged = true;
+        }
+
+        private Texture2D LoadAsset()
+        {
+            if (assetBundle == null)
+            {
+                using (Stream bundleStream = MelonAssembly.Assembly.GetManifestResourceStream("RUMBLECherryBlossoms.Resources.rumbletrees"))
+                {
+                    if (bundleStream == null)
+                    {
+                        MelonLogger.Error("Failed to find resource stream!");
+                        return null;
+                    }
+
+                    byte[] bundleBytes = new byte[bundleStream.Length];
+                    bundleStream.Read(bundleBytes, 0, bundleBytes.Length);
+                    assetBundle = Il2CppAssetBundleManager.LoadFromMemory(bundleBytes);
+                }
+            }
+
+            if (assetBundle == null)
+            {
+                MelonLogger.Error("AssetBundle failed to load.");
+                return null;
+            }
+            Texture2D asset;
+            if (sceneID == 2)
+            {
+                asset = assetBundle.LoadAsset<Texture2D>("MAP0_final");
+            }
+            else if (sceneID == 4)
+            {
+                asset = assetBundle.LoadAsset<Texture2D>("park0_final");
+            }
+            else
+            {
+                MelonLogger.Error("Wrong scene!");
+                return null;
+            }
+
+            if (asset == null)
+                MelonLogger.Error("Failed to load texture from AssetBundle!");
+            else
+                asset.Apply(true, false); // Make sure it's marked readable
+
+            return asset;
         }
 
         public override void OnLateInitializeMelon()
@@ -105,19 +169,59 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom leaf colours on the ring map", new Tags());
             RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables custom leaf colours in the gym", new Tags());
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom leaf colours in parks", new Tags());
+            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the older lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
+
+            RumbleTrees.AddToList("Colour", "Cherry", "Current colours:\nCherry\nOrange", new Tags());
 
             RumbleTrees.GetFromFile();
             RumbleTrees.ModSaved += OnSave;
+            RumbleTrees.Settings[5].SavedValueChanged += OnLegacyChange;
+            RumbleTrees.Settings[6].SavedValueChanged += OnColourChange;
             UI.instance.UI_Initialized += OnUIInit;
+
+            // Set the selected colour without updating cause we're not in a valid scene right now
+            switch (((string)RumbleTrees.Settings[6].SavedValue).ToLower())
+            {
+                case "cherry":
+                    selectedColour = cherryColour;
+                    break;
+                case "orange":
+                    selectedColour = orangeColour;
+                    break;
+            }
         }
 
         public void OnSave()
         {
             if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
             {
-                UpdateColours(cherryColour, wasSceneChanged);
+                UpdateColours(wasSceneChanged);
+                if (sceneID == 2 || sceneID == 4)
+                {
+                    MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
+                }
                 wasSceneChanged = !wasSceneChanged;
             }
+        }
+
+        public void OnColourChange(object sender = null, EventArgs e = null)
+        {
+            switch (((ValueChange<String>)e).Value.ToLower())
+            {
+                case "cherry":
+                    selectedColour = cherryColour;
+                    break;
+                case "orange":
+                    selectedColour = orangeColour;
+                    break;
+            }
+            UpdateColours();
+        }
+
+        public void OnLegacyChange(object sender = null, EventArgs e = null)
+        {
+            if (sceneID == 2 || sceneID == 4)
+                MelonCoroutines.Start(SwapLightmap(((ValueChange<bool>)e).Value));
         }
 
         public void OnUIInit()
@@ -125,13 +229,63 @@ namespace RUMBLECherryBlossoms
             UI.instance.AddMod(RumbleTrees);
         }
 
-        private void UpdateColours(Color colour, bool reset = false)
+        IEnumerator SwapLightmap(bool legacy = false)
+        {
+            yield return new WaitForSeconds(0.2f);
+
+            if (!legacy && !wasLightmapChanged)
+            {
+                lightmap = LoadAsset();
+                if (lightmap == null)
+                {
+                    MelonLogger.Error("Lightmap is null!");
+                    yield break;
+                }
+
+                LightmapData[] oldLightmaps = LightmapSettings.lightmaps;
+                LightmapData[] newLightmaps = new LightmapData[oldLightmaps.Length + 1];
+                for (int i = 0; i < oldLightmaps.Length; i++)
+                    newLightmaps[i] = oldLightmaps[i];
+
+                LightmapData customLightmapData = new LightmapData
+                {
+                    lightmapColor = lightmap
+                };
+                newLightmaps[oldLightmaps.Length] = customLightmapData;
+
+                LightmapSettings.lightmaps = newLightmaps;
+
+                foreach (MeshRenderer r in renderers)
+                {
+                    r.lightmapIndex = newLightmaps.Length - 1;
+                    r.lightmapScaleOffset = new Vector4(1, 1, 0, 0); // full map
+                }
+                wasLightmapChanged = true;
+            }
+            else if (!legacy && wasLightmapChanged)
+            {
+                foreach (MeshRenderer r in renderers)
+                {
+                    r.lightmapIndex = 2;
+                }
+            }
+            else
+            {
+                foreach (MeshRenderer r in renderers)
+                {
+                    r.lightmapIndex = 1;
+                }
+            }
+        }
+
+        private void UpdateColours(bool reset = false)
         {
             if (leafObjects.Count != 0)
             {
                 foreach (GameObject leafObject in leafObjects)
                 {
-                    renderer = leafObject.GetComponent<MeshRenderer>();
+                    MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
+                    renderers.Add(renderer);
                     leafMaterial = renderer.material;
 
                     if (reset)
@@ -140,9 +294,11 @@ namespace RUMBLECherryBlossoms
                         leafMaterial.SetColor(LCB1, originalShades[0]);
                         leafMaterial.SetColor(LCT2, originalShades[2]);
                         leafMaterial.SetColor(LCB2, originalShades[0]);
+
+                        continue;
                     }
 
-                    Color.RGBToHSV(colour, out float hue, out float sat, out float val);
+                    Color.RGBToHSV(selectedColour, out float hue, out float sat, out float val);
 
                     if (sat > 0.9f) sat = 0.9f;
                     if (sat < 0.1f) sat = 0.1f;
@@ -152,7 +308,7 @@ namespace RUMBLECherryBlossoms
                     shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.1f);
                     shades[1] = Color.HSVToRGB(hue, sat, val);
                     shades[2] = Color.HSVToRGB(hue, sat + 0.1f, val + 0.1f);
-                    if (leafMaterial != null && !reset)
+                    if (leafMaterial != null)
                     {
                         if (!originalSaved[0])
                         {
@@ -162,17 +318,22 @@ namespace RUMBLECherryBlossoms
                         }
                         leafMaterial.SetColor(LCT1, shades[2]);
                         leafMaterial.SetColor(LCB1, shades[0]);
-                        if (sceneID == 4) leafMaterial.SetColor(LCT2, shades[2]);
+                        leafMaterial.SetColor(LCT2, shades[2]);
                         if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
                         // MelonLogger.Msg($"Resulting colour: {material.GetColor(LCT2)}");
                     }
+                }
+
+                if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].Value)
+                {
+                    MelonCoroutines.Start(SwapLightmap());
                 }
             }
             else
             {
                 MelonLogger.Warning("Leaf object not found!");
             }
-            
+
             if (VFXsObject != null)
             {
                 VisualEffect leafVFX;
