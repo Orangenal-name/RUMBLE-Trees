@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.VFX;
 using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
-using UnityEngine.PlayerLoop;
 using System.Collections;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
@@ -14,12 +13,12 @@ namespace RUMBLECherryBlossoms
 {
     public static class BuildInfo
     {
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
     }
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange"];
+        private string[] themes = ["cherry", "orange", "yellow", "red"];
         public override bool DoValidation(string Input)
         {
             if (!themes.Contains(Input.ToLower())) return false;
@@ -35,6 +34,8 @@ namespace RUMBLECherryBlossoms
         private Color selectedColour;
         private Color cherryColour = new Color(0.86f, 0.54f, 0.9f, 1f);
         private Color orangeColour = new Color(1.0f, 0.44f, 0.0f, 1f);
+        private Color yellowColour = new Color(1.0f, 0.78f, 0.0f, 1f);
+        private Color redColour = new Color(0.66f, 0.0f, 0.0f, 1f);
         private int LCT1 = 1475; // Top of Leaves
         private int LCB1 = 1476; // Bottom of Leaves
         private int LCT2 = 1477; // Top of Leaves
@@ -169,9 +170,9 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom leaf colours on the ring map", new Tags());
             RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables custom leaf colours in the gym", new Tags());
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom leaf colours in parks", new Tags());
-            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the older lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
+            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
 
-            RumbleTrees.AddToList("Colour", "Cherry", "Current colours:\nCherry\nOrange", new Tags());
+            RumbleTrees.AddToList("Colour", "Cherry", "Current colours:\nCherry\nOrange\nYellow\nRed", new Tags());
 
             RumbleTrees.GetFromFile();
             RumbleTrees.ModSaved += OnSave;
@@ -180,13 +181,24 @@ namespace RUMBLECherryBlossoms
             UI.instance.UI_Initialized += OnUIInit;
 
             // Set the selected colour without updating cause we're not in a valid scene right now
-            switch (((string)RumbleTrees.Settings[6].SavedValue).ToLower())
+            setSelectedColour((string)RumbleTrees.Settings[6].SavedValue);
+        }
+
+        public void setSelectedColour(string colour)
+        {
+            switch (colour.ToLower())
             {
                 case "cherry":
                     selectedColour = cherryColour;
                     break;
                 case "orange":
                     selectedColour = orangeColour;
+                    break;
+                case "yellow":
+                    selectedColour = yellowColour;
+                    break;
+                case "red":
+                    selectedColour = redColour;
                     break;
             }
         }
@@ -206,15 +218,7 @@ namespace RUMBLECherryBlossoms
 
         public void OnColourChange(object sender = null, EventArgs e = null)
         {
-            switch (((ValueChange<String>)e).Value.ToLower())
-            {
-                case "cherry":
-                    selectedColour = cherryColour;
-                    break;
-                case "orange":
-                    selectedColour = orangeColour;
-                    break;
-            }
+            setSelectedColour(((ValueChange<string>)e).Value);
             UpdateColours();
         }
 
@@ -360,9 +364,9 @@ namespace RUMBLECherryBlossoms
                     leafVFX.SetGradient(FLG, gradient);
                 }
             }
-            else if (sceneID != 0 && sceneID != 3)
+            else if (sceneID == 0 || sceneID == 3)
             {
-                MelonLogger.Warning("Leaf object not found!");
+                MelonLogger.Warning("Leaf VFX object not found!");
             }
         }
     }
