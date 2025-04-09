@@ -6,16 +6,16 @@
 
 # Current Presets
 ### Cherry
-<img alt="Screenshot1" src="https://i.imgur.com/wSetmYO.png" style="width:100%; height:250px; object-fit:cover;">
+<img alt="Screenshot1" src="https://i.imgur.com/wSetmYO.png" style="width:500px; height:250px; object-fit:cover;">
 
 ### Orange
-<img alt="Screenshot2" src="https://i.imgur.com/MmIGui7.png" style="width:100%; height:250px; object-fit:cover;">
+<img alt="Screenshot2" src="https://i.imgur.com/MmIGui7.png" style="width:500px; height:250px; object-fit:cover;">
 
 ### Yellow
-<img alt="Screenshot3" src="https://i.imgur.com/f39dlLI.png" style="width:100%; height:250px; object-fit:cover;">
+<img alt="Screenshot3" src="https://i.imgur.com/f39dlLI.png" style="width:500px; height:250px; object-fit:cover;">
 
 ### Red
-<img alt="Screenshot4" src="https://i.imgur.com/yq2Eeor.png" style="width:100%; height:250px; object-fit:cover;">
+<img alt="Screenshot4" src="https://i.imgur.com/yq2Eeor.png" style="width:500px; height:250px; object-fit:cover;">
 
 <br>
 
