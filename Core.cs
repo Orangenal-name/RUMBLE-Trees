@@ -68,64 +68,7 @@ namespace RUMBLECherryBlossoms
         private Il2CppAssetBundle assetBundle = null;
         Mod RumbleTrees = new Mod();
 
-        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
-        {
-            LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
-            LCB1 = Shader.PropertyToID("Color_6f942b46fda341409751e4e7f292de58"); // Ditto
-            LCT2 = Shader.PropertyToID("Vector3_fa2c0c5c11884cdfbeb10e0460312f5c"); // Ditto
-            LCB2 = Shader.PropertyToID("Color_d75e4f72dbfb4e7187f1c2d80558c414"); // Ditto
-            FLG = Shader.PropertyToID("Leaf Color Gradient"); // Found in sharedassets0 path ID 371 (VisualEffectAsset Falling leaves)
-
-            leafObjects = new List<GameObject>();
-            renderers.Clear();
-            VFXsObject = null;
-            wasSceneChanged = false;
-            wasLightmapChanged = false;
-
-            if (sceneName == "Map0")
-            {
-                leafObjects.Add(GameObject.Find("Map0_production/Main static group/leave"));
-                sceneID = 2;
-                // MelonLogger.Msg($"Vector: {Shader.PropertyToID("Vector3_fa2c0c5c11884cdfbeb10e0460312f5c")}"); // idk what this is for but it's certainly there
-            }
-            else if (sceneName == "Map1")
-            {
-                leafObjects.Add(GameObject.Find("Map1_production/Main static group/Leaves_Map2"));
-                VFXsObject = GameObject.Find("Lighting & Effects/Visual Effects/Falling Leaf VFXs");
-                sceneID = 1;
-            }
-            else if (sceneName == "Gym")
-            {
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves (1)"));
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_001 (1)"));
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_002 (1)"));
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_003 (1)"));
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__23_"));
-                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__24_"));
-                VFXsObject = GameObject.Find("--------------SCENE--------------/Lighting and effects/Visual Effects/Falling Leaf VFXs");
-                sceneID = 3;
-            }
-            else if (sceneName == "Park")
-            {
-                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park"));
-                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_001"));
-                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_002"));
-                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_003"));
-                VFXsObject = GameObject.Find("Lighting and effects/Visual Effects/Falling Leaf VFXs");
-                sceneID = 4;
-            }
-            else
-            {
-                // Execute the code, or else...
-                return;
-            }
-
-            if (!(bool)RumbleTrees.Settings[sceneID].SavedValue) return;
-
-            UpdateColours();
-            wasSceneChanged = true;
-        }
-
+        // Code for loading custom lightmaps (they're just desaturated versions of the default ones)
         private Texture2D LoadAsset()
         {
             if (assetBundle == null)
@@ -176,7 +119,7 @@ namespace RUMBLECherryBlossoms
         {
             base.OnLateInitializeMelon();
 
-            // Setup UI + Description
+            // Setup ModUI settings & Description
             RumbleTrees.ModName = "RumbleTrees";
             RumbleTrees.ModVersion = BuildInfo.Version;
             RumbleTrees.SetFolder("RumbleTrees");
@@ -193,9 +136,12 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddValidation("Colour", new Validation());
 
             RumbleTrees.GetFromFile();
+
+            // These three are for updating the colour immediately instead of waiting for the next scene load
             RumbleTrees.ModSaved += OnSave;
             RumbleTrees.Settings[5].SavedValueChanged += OnLegacyChange;
             RumbleTrees.Settings[6].SavedValueChanged += OnColourChange;
+
             UI.instance.UI_Initialized += OnUIInit;
 
             // Set the selected colour without updating cause we're not in a valid scene right now
@@ -205,11 +151,123 @@ namespace RUMBLECherryBlossoms
             else setSelectedColour(colour);
         }
 
+        public void OnColourChange(object sender = null, EventArgs e = null)
+        {
+            string newColour = ((ValueChange<string>)e).Value;
+
+            if (checkCustom(newColour))
+                setCustom(newColour);
+            else setSelectedColour(newColour);
+
+            UpdateColours();
+        }
+
+        public void OnLegacyChange(object sender = null, EventArgs e = null)
+        {
+            if (sceneID == 2 || sceneID == 4)
+                MelonCoroutines.Start(SwapLightmap(((ValueChange<bool>)e).Value));
+        }
+
+        public void OnSave()
+        {
+            if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
+            {
+                UpdateColours(wasSceneChanged);
+                if (sceneID == 2 || sceneID == 4)
+                {
+                    MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
+                }
+                wasSceneChanged = !wasSceneChanged;
+            }
+        }
+
+        public void OnUIInit()
+        {
+            UI.instance.AddMod(RumbleTrees);
+        }
+
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            // Hardcoding the IDs seemed to change depending on certain conditions so doing it this way makes it always work
+            LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
+            LCB1 = Shader.PropertyToID("Color_6f942b46fda341409751e4e7f292de58"); // Ditto
+            LCT2 = Shader.PropertyToID("Vector3_fa2c0c5c11884cdfbeb10e0460312f5c"); // Ditto
+            LCB2 = Shader.PropertyToID("Color_d75e4f72dbfb4e7187f1c2d80558c414"); // Ditto
+            FLG = Shader.PropertyToID("Leaf Color Gradient"); // Found in sharedassets0 path ID 371 (VisualEffectAsset Falling leaves)
+
+            leafObjects = new List<GameObject>();
+            renderers.Clear();
+            VFXsObject = null;
+            wasSceneChanged = false;
+            wasLightmapChanged = false;
+
+            if (sceneName == "Map0")
+            {
+                leafObjects.Add(GameObject.Find("Map0_production/Main static group/leave"));
+                sceneID = 2;
+            }
+            else if (sceneName == "Map1")
+            {
+                leafObjects.Add(GameObject.Find("Map1_production/Main static group/Leaves_Map2"));
+                VFXsObject = GameObject.Find("Lighting & Effects/Visual Effects/Falling Leaf VFXs");
+                sceneID = 1;
+            }
+            else if (sceneName == "Gym")
+            {
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves (1)"));
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_001 (1)"));
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_002 (1)"));
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_003 (1)"));
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__23_"));
+                leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__24_"));
+                VFXsObject = GameObject.Find("--------------SCENE--------------/Lighting and effects/Visual Effects/Falling Leaf VFXs");
+                sceneID = 3;
+            }
+            else if (sceneName == "Park")
+            {
+                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park"));
+                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_001"));
+                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_002"));
+                leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_003"));
+                VFXsObject = GameObject.Find("Lighting and effects/Visual Effects/Falling Leaf VFXs");
+                sceneID = 4;
+            }
+            else
+            {
+                // Execute the code, or else...
+                return; // (This only prevents errors in the loader)
+            }
+
+            if (!(bool)RumbleTrees.Settings[sceneID].SavedValue) return;
+
+            UpdateColours();
+            wasSceneChanged = true;
+        }
+
+        public bool checkCustom(string Input)
+        {
+            string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
+            string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
+
+            if (Regex.IsMatch(Input, rgbPattern))
+            {
+                return true;
+            }
+            else if (Regex.IsMatch(Input, hexPattern))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public void setCustom(string input)
         {
             if (input.Contains(" "))
             {
-                var parts = input.Split(' ');
+                string[] parts = input.Split(' ');
                 if (parts.Length == 3 &&
                     byte.TryParse(parts[0], out byte rByte) &&
                     byte.TryParse(parts[1], out byte gByte) &&
@@ -248,62 +306,9 @@ namespace RUMBLECherryBlossoms
             }
         }
 
-        public void OnSave()
-        {
-            if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
-            {
-                UpdateColours(wasSceneChanged);
-                if (sceneID == 2 || sceneID == 4)
-                {
-                    MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
-                }
-                wasSceneChanged = !wasSceneChanged;
-            }
-        }
-
-        public bool checkCustom(string Input)
-        {
-            string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
-            string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
-
-            if (Regex.IsMatch(Input, rgbPattern))
-            {
-                return true;
-            }
-            else if (Regex.IsMatch(Input, hexPattern))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        public void OnColourChange(object sender = null, EventArgs e = null)
-        {
-            string newColour = ((ValueChange<string>)e).Value;
-
-            if (checkCustom(newColour))
-                setCustom(newColour);
-            else setSelectedColour(newColour);
-
-            UpdateColours();
-        }
-
-        public void OnLegacyChange(object sender = null, EventArgs e = null)
-        {
-            if (sceneID == 2 || sceneID == 4)
-                MelonCoroutines.Start(SwapLightmap(((ValueChange<bool>)e).Value));
-        }
-
-        public void OnUIInit()
-        {
-            UI.instance.AddMod(RumbleTrees);
-        }
-
         IEnumerator SwapLightmap(bool legacy = false)
         {
+            // Setting immediately on scene change doesn't change the lightmap index??
             yield return new WaitForSeconds(0.2f);
 
             if (!legacy && !wasLightmapChanged)
@@ -315,11 +320,13 @@ namespace RUMBLECherryBlossoms
                     yield break;
                 }
 
+                // Make a copy of the existing lightmap
                 LightmapData[] oldLightmaps = LightmapSettings.lightmaps;
                 LightmapData[] newLightmaps = new LightmapData[oldLightmaps.Length + 1];
                 for (int i = 0; i < oldLightmaps.Length; i++)
                     newLightmaps[i] = oldLightmaps[i];
 
+                // Swap in our greyscale lightmap
                 LightmapData customLightmapData = new LightmapData
                 {
                     lightmapColor = lightmap
@@ -335,7 +342,7 @@ namespace RUMBLECherryBlossoms
                 }
                 wasLightmapChanged = true;
             }
-            else if (!legacy && wasLightmapChanged)
+            else if (!legacy && wasLightmapChanged) // If we already added our lightmap we don't need to do it again
             {
                 foreach (MeshRenderer r in renderers)
                 {
@@ -363,6 +370,8 @@ namespace RUMBLECherryBlossoms
 
                     if (reset)
                     {
+                        if (!originalSaved[0]) continue;
+
                         leafMaterial.SetColor(LCT1, originalShades[2]);
                         leafMaterial.SetColor(LCB1, originalShades[0]);
                         leafMaterial.SetColor(LCT2, originalShades[2]);
@@ -384,6 +393,7 @@ namespace RUMBLECherryBlossoms
 
                     if (leafMaterial != null)
                     {
+                        // Save the original tree shades so we can reset it if needed
                         if (!originalSaved[0])
                         {
                             originalShades[2] = leafMaterial.GetColor(LCT1);
@@ -394,7 +404,6 @@ namespace RUMBLECherryBlossoms
                         leafMaterial.SetColor(LCB1, shades[0]);
                         leafMaterial.SetColor(LCT2, shades[2]);
                         if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
-                        // MelonLogger.Msg($"Resulting colour: {material.GetColor(LCT2)}");
                     }
                 }
 
@@ -417,6 +426,16 @@ namespace RUMBLECherryBlossoms
                     GradientColorKey[] keys = new GradientColorKey[2];
                     Gradient gradient = leafVFX.GetGradient(FLG);
 
+                    if (reset)
+                    {
+                        if (!originalSaved[1]) continue;
+
+                        keys[0].color = originalShades[1]; keys[1].color = originalShades[1];
+                        gradient.colorKeys = keys;
+                        leafVFX.SetGradient(FLG, gradient);
+                        continue;
+                    }
+
                     if (!originalSaved[1])
                     {
                         originalShades[1] = gradient.colorKeys[0].color;
@@ -426,11 +445,6 @@ namespace RUMBLECherryBlossoms
                     keys[0].color = shades[1]; keys[1].color = shades[1];
                     gradient.colorKeys = keys;
 
-                    if (reset)
-                    {
-                        keys[0].color = originalShades[1]; keys[1].color = originalShades[1];
-                        gradient.colorKeys = keys;
-                    }
                     leafVFX.SetGradient(FLG, gradient);
                 }
             }
