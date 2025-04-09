@@ -4,6 +4,7 @@ using UnityEngine.VFX;
 using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 using System.Collections;
+using System.Text.RegularExpressions;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -13,16 +14,31 @@ namespace RUMBLECherryBlossoms
 {
     public static class BuildInfo
     {
-        public const string Version = "1.2.0";
+        public const string Version = "1.3.0";
     }
 
     public class Validation : ValidationParameters
     {
         private string[] themes = ["cherry", "orange", "yellow", "red"];
+
         public override bool DoValidation(string Input)
         {
-            if (!themes.Contains(Input.ToLower())) return false;
-            return true;
+            string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
+            string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
+
+            if (Regex.IsMatch(Input, rgbPattern))
+            {
+                return true;
+            }
+            else if (Regex.IsMatch(Input, hexPattern))
+            {
+                return true;
+            }
+            else // Must be a preset
+            {
+                if (themes.Contains(Input.ToLower())) return true;
+                return false;
+            }
         }
     }
 
@@ -164,7 +180,7 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.ModName = "RumbleTrees";
             RumbleTrees.ModVersion = BuildInfo.Version;
             RumbleTrees.SetFolder("RumbleTrees");
-            RumbleTrees.AddDescription("Description", "", "Make them pretty!", new Tags { IsSummary = true });
+            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed", new Tags { IsSummary = true });
 
             RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables custom leaf colours on the pit map", new Tags());
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom leaf colours on the ring map", new Tags());
@@ -172,7 +188,9 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom leaf colours in parks", new Tags());
             RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
 
-            RumbleTrees.AddToList("Colour", "Cherry", "Current colours:\nCherry\nOrange\nYellow\nRed", new Tags());
+            RumbleTrees.AddToList("Colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+
+            RumbleTrees.AddValidation("Colour", new Validation());
 
             RumbleTrees.GetFromFile();
             RumbleTrees.ModSaved += OnSave;
@@ -181,10 +199,37 @@ namespace RUMBLECherryBlossoms
             UI.instance.UI_Initialized += OnUIInit;
 
             // Set the selected colour without updating cause we're not in a valid scene right now
-            setSelectedColour((string)RumbleTrees.Settings[6].SavedValue);
+            string colour = (string)RumbleTrees.Settings[6].SavedValue;
+            if (checkCustom(colour))
+                setCustom(colour);
+            else setSelectedColour(colour);
         }
 
-        public void setSelectedColour(string colour)
+        public void setCustom(string input)
+        {
+            if (input.Contains(" "))
+            {
+                var parts = input.Split(' ');
+                if (parts.Length == 3 &&
+                    byte.TryParse(parts[0], out byte rByte) &&
+                    byte.TryParse(parts[1], out byte gByte) &&
+                    byte.TryParse(parts[2], out byte bByte))
+                {
+                    selectedColour = new Color(rByte / 255f, gByte / 255f, bByte / 255f);
+                }
+            }
+
+            if (input.Length == 6 &&
+                int.TryParse(input, System.Globalization.NumberStyles.HexNumber, null, out int hex))
+            {
+                float r = ((hex >> 16) & 0xFF) / 255f;
+                float g = ((hex >> 8) & 0xFF) / 255f;
+                float b = (hex & 0xFF) / 255f;
+                selectedColour = new Color(r, g, b);
+            }
+        }
+
+        public void setSelectedColour(string colour, bool custom = false)
         {
             switch (colour.ToLower())
             {
@@ -216,9 +261,33 @@ namespace RUMBLECherryBlossoms
             }
         }
 
+        public bool checkCustom(string Input)
+        {
+            string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
+            string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
+
+            if (Regex.IsMatch(Input, rgbPattern))
+            {
+                return true;
+            }
+            else if (Regex.IsMatch(Input, hexPattern))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public void OnColourChange(object sender = null, EventArgs e = null)
         {
-            setSelectedColour(((ValueChange<string>)e).Value);
+            string newColour = ((ValueChange<string>)e).Value;
+
+            if (checkCustom(newColour))
+                setCustom(newColour);
+            else setSelectedColour(newColour);
+
             UpdateColours();
         }
 
@@ -312,6 +381,7 @@ namespace RUMBLECherryBlossoms
                     shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.1f);
                     shades[1] = Color.HSVToRGB(hue, sat, val);
                     shades[2] = Color.HSVToRGB(hue, sat + 0.1f, val + 0.1f);
+
                     if (leafMaterial != null)
                     {
                         if (!originalSaved[0])
