@@ -5,6 +5,7 @@ using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 using System.Collections;
 using System.Text.RegularExpressions;
+using UnityEngine.UIElements;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -19,7 +20,7 @@ namespace RUMBLECherryBlossoms
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow"];
         public Validation(string type)
         {
             this.type = type;
@@ -76,6 +77,9 @@ namespace RUMBLECherryBlossoms
         private bool wasLightmapChanged = false;
         private Texture2D lightmap = null;
         private Il2CppAssetBundle assetBundle = null;
+        private int rainbowHue = 0;
+        private object rainbowCoroutine;
+        private bool isRainbow = false;
         Mod RumbleTrees = new Mod();
 
         // Code for loading custom lightmaps (they're just desaturated versions of the default ones)
@@ -144,6 +148,8 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
 
+            RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
+
             RumbleTrees.AddValidation("Leaf colour", new Validation("leaf"));
             RumbleTrees.AddValidation("Root colour", new Validation("root"));
 
@@ -196,6 +202,11 @@ namespace RUMBLECherryBlossoms
             if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
             {
                 UpdateColours(wasSceneChanged);
+                MelonLogger.Msg($"wasSceneChanged: {wasSceneChanged} is rainbow: {isRainbow}");
+                if (!wasSceneChanged && isRainbow)
+                {
+                    rainbowCoroutine = MelonCoroutines.Start(RAINBOW());
+                }
                 if (sceneID == 2 || sceneID == 4)
                 {
                     MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
@@ -288,7 +299,16 @@ namespace RUMBLECherryBlossoms
             if (!(bool)RumbleTrees.Settings[sceneID].SavedValue) return;
 
             UpdateColours();
+            if (isRainbow)
+            {
+                rainbowCoroutine = MelonCoroutines.Start(RAINBOW());
+            }
             wasSceneChanged = true;
+        }
+
+        public override void OnSceneWasUnloaded(int buildIndex, string sceneName)
+        {
+            if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
         }
 
         public bool checkCustom(string Input)
@@ -355,6 +375,9 @@ namespace RUMBLECherryBlossoms
 
         public void setSelectedColour(string colour, bool custom = false)
         {
+            MelonLogger.Msg($"Setting selected colour to: {colour}");
+            if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
+            isRainbow = false;
             switch (colour.ToLower())
             {
                 case "cherry":
@@ -369,6 +392,34 @@ namespace RUMBLECherryBlossoms
                 case "red":
                     selectedLeafColour = redColour;
                     break;
+                case "rainbow":
+                    isRainbow = true;
+                    if (sceneID != -1)
+                    {
+                        rainbowCoroutine = MelonCoroutines.Start(RAINBOW());
+                    }
+                    break;
+            }
+        }
+
+        IEnumerator RAINBOW()
+        {
+            WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
+            int speed = (int)RumbleTrees.Settings[8].SavedValue;
+            int FrameCounter = 10/(speed*10)-1;
+            while (true)
+            {
+                if (FrameCounter >= 2)
+                {
+                    if (rainbowHue >= 360) rainbowHue = 0;
+                    selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
+                    UpdateColours(type:"leaves");
+                    if (speed > 10) rainbowHue += speed / 10;
+                    rainbowHue++;
+                    FrameCounter = 0;
+                }
+                FrameCounter++;
+                yield return waitForFixedUpdate;
             }
         }
 
@@ -439,7 +490,10 @@ namespace RUMBLECherryBlossoms
                         if (reset)
                         {
                             if (!originalSaved[0]) continue;
-
+                            if (isRainbow)
+                            {
+                                if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
+                            }
                             leafMaterial.SetColor(LCT1, originalShades[2]);
                             leafMaterial.SetColor(LCB1, originalShades[0]);
                             leafMaterial.SetColor(LCT2, originalShades[2]);
