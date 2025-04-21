@@ -65,7 +65,7 @@ namespace RUMBLECherryBlossoms
         private int LCB2 = 1479; // Bottom of Leaves
         private int FLG = 1110; // Falling leaves gradient
         private int RC1 = 1203;
-        private int RC2;
+        private int RC2 = 1303;
         private bool gotPropertyIDs = false;
         private Material leafMaterial;
         private Material rootMaterial;
@@ -241,7 +241,6 @@ namespace RUMBLECherryBlossoms
                 FLG = Shader.PropertyToID("Leaf Color Gradient"); // Found in sharedassets0 path ID 371 (VisualEffectAsset Falling leaves)
                 RC1 = Shader.PropertyToID("Color_FA790384"); // Found in Material Rumble root
                 RC2 = Shader.PropertyToID("Color_c7120f3b741f4dd48575e89d95f9641d"); // Ditto
-                MelonLogger.Msg($"RC2 = {RC2}");
                 gotPropertyIDs = true;
             }
 
