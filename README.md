@@ -17,6 +17,9 @@
 ### Red
 <img alt="Screenshot4" src="https://i.imgur.com/yq2Eeor.png" style="width:500px; height:250px; object-fit:cover;">
 
+### RAINBOW
+<img alt="Screenshot4" src="https://i.imgur.com/sxxV5g9.gif" style="width:500px; height:250px; object-fit:cover;">
+
 <br>
 
 # Help And Other Resources
