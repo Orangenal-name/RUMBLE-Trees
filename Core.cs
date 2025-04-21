@@ -19,7 +19,7 @@ namespace RUMBLECherryBlossoms
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla"];
         public Validation(string type)
         {
             this.type = type;
@@ -42,6 +42,7 @@ namespace RUMBLECherryBlossoms
             {
                 if (themes.Contains(Input.ToLower()) && type == "leaf") return true;
                 if (Input.ToLower() == "rainbow" && type == "root") return true;
+                if (Input.ToLower() == "vanilla" && type == "root") return true;
                 return false;
             }
         }
@@ -82,6 +83,8 @@ namespace RUMBLECherryBlossoms
         private object rainbowRootCoroutine;
         private bool isRainbow = false;
         private bool isRainbowRoot = false;
+        private bool leavesEnabled = true;
+        private bool rootsEnabled = false;
         Mod RumbleTrees = new Mod();
 
         // Code for loading custom lightmaps (they're just desaturated versions of the default ones)
@@ -139,7 +142,7 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.ModName = "RumbleTrees";
             RumbleTrees.ModVersion = BuildInfo.Version;
             RumbleTrees.SetFolder("RumbleTrees");
-            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed", new Tags { IsSummary = true });
+            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)", new Tags { IsSummary = true });
 
             RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables custom leaf colours on the pit map", new Tags());
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom leaf colours on the ring map", new Tags());
@@ -148,7 +151,7 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
@@ -343,14 +346,25 @@ namespace RUMBLECherryBlossoms
 
         public void setCustom(string input, string type)
         {
+            rootsEnabled = true;
             if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
             isRainbowRoot = false;
-            if (input == "rainbow" && type == "roots")
+            if (input.ToLower() == "rainbow" && type == "roots")
             {
                 isRainbowRoot = true;
                 if (sceneID != -1)
                 {
                     rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOT());
+                }
+                return;
+            }
+            else if (input.ToLower() == "vanilla" && type == "roots")
+            {
+                rootsEnabled = false;
+                if (isRainbowRoot) isRainbowRoot = false;
+                if (rainbowRootCoroutine != null)
+                {
+                    MelonCoroutines.Stop(rainbowRootCoroutine);
                 }
                 return;
             }
@@ -399,6 +413,7 @@ namespace RUMBLECherryBlossoms
         {
             if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
             isRainbow = false;
+            leavesEnabled = true;
             switch (colour.ToLower())
             {
                 case "cherry":
@@ -418,6 +433,14 @@ namespace RUMBLECherryBlossoms
                     if (sceneID != -1)
                     {
                         rainbowCoroutine = MelonCoroutines.Start(RAINBOW());
+                    }
+                    break;
+                case "vanilla":
+                    leavesEnabled = false;
+                    if (isRainbow) isRainbow = false;
+                    if (rainbowCoroutine != null)
+                    {
+                        MelonCoroutines.Stop(rainbowCoroutine);
                     }
                     break;
             }
@@ -519,7 +542,7 @@ namespace RUMBLECherryBlossoms
 
         private void UpdateColours(bool reset = false, string type = "all")
         {
-            if (type == "leaves" || type == "all")
+            if ((type == "leaves" || type == "all"))
             {
                 if (leafObjects.Count != 0)
                 {
@@ -529,7 +552,7 @@ namespace RUMBLECherryBlossoms
                         renderers.Add(renderer);
                         leafMaterial = renderer.material;
 
-                        if (reset)
+                        if (reset || !leavesEnabled)
                         {
                             if (!originalSaved[0]) continue;
                             if (isRainbow)
@@ -590,7 +613,7 @@ namespace RUMBLECherryBlossoms
                         GradientColorKey[] keys = new GradientColorKey[2];
                         Gradient gradient = leafVFX.GetGradient(FLG);
 
-                        if (reset)
+                        if (reset || !leavesEnabled)
                         {
                             if (!originalSaved[1]) continue;
 
@@ -627,7 +650,7 @@ namespace RUMBLECherryBlossoms
                         MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
                         renderers.Add(renderer);
                         rootMaterial = renderer.material;
-                        if (reset)
+                        if (reset || !rootsEnabled)
                         {
                             if (!originalSaved[2]) continue;
                             if (isRainbowRoot)
