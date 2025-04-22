@@ -5,6 +5,7 @@ using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 using System.Collections;
 using System.Text.RegularExpressions;
+using Il2CppRUMBLE.Combat.ShiftStones;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -591,9 +592,13 @@ namespace RUMBLECherryBlossoms
                                 originalShades[0] = leafMaterial.GetColor(LCB1);
                                 originalSaved[0] = true;
                             }
-                            leafMaterial.SetColor(LCT1, shades[2]);
-                            leafMaterial.SetColor(LCB1, shades[0]);
-                            leafMaterial.SetColor(LCT2, shades[2]);
+                            List<GameObject> HiddenStones = new List<GameObject>();
+                            for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
+                            {
+                                HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
+                            }
+                            GameObject stone = HiddenStones.Where(i => i.name == "GuardStone").First();
+                            renderer.material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
                             if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
                         }
                     }
@@ -686,8 +691,13 @@ namespace RUMBLECherryBlossoms
                             shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
                             shades[1] = Color.HSVToRGB(hue, sat, val);
 
-                            rootMaterial.SetColor(RC1, shades[0]);
-                            rootMaterial.SetColor(RC2, shades[1]);
+                            List<GameObject> HiddenStones = new List<GameObject>();
+                            for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
+                            {
+                                HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
+                            }
+                            GameObject stone = HiddenStones.Where(i => i.name == "GuardStone").First();
+                            renderer.material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
                         }
                     }
                 }
