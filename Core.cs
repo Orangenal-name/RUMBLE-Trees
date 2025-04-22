@@ -144,11 +144,11 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.SetFolder("RumbleTrees");
             RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)", new Tags { IsSummary = true });
 
-            RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables custom leaf colours on the pit map", new Tags());
-            RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom leaf colours on the ring map", new Tags());
-            RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables custom leaf colours in the gym", new Tags());
-            RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom leaf colours in parks", new Tags());
-            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all colours", new Tags());
+            RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables custom tree colours on the pit map", new Tags());
+            RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom tree colours on the ring map", new Tags());
+            RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables custom tree colours in the gym", new Tags());
+            RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom tree colours in parks", new Tags());
+            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all leaf colours", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
