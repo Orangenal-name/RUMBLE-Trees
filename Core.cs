@@ -360,11 +360,6 @@ namespace RUMBLECherryBlossoms
             else if (input.ToLower() == "vanilla" && type == "roots")
             {
                 rootsEnabled = false;
-                if (isRainbowRoot) isRainbowRoot = false;
-                if (rainbowRootCoroutine != null)
-                {
-                    MelonCoroutines.Stop(rainbowRootCoroutine);
-                }
                 return;
             }
             Color colour;
