@@ -14,7 +14,7 @@ namespace RUMBLECherryBlossoms
 {
     public static class BuildInfo
     {
-        public const string Version = "1.4.0";
+        public const string Version = "1.4.1";
     }
 
     public class Validation : ValidationParameters
