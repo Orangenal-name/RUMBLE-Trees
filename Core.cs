@@ -198,7 +198,7 @@ namespace RUMBLECherryBlossoms
 
         public void OnLegacyChange(object sender = null, EventArgs e = null)
         {
-            if (sceneID == 2 || sceneID == 4)
+            if (sceneID == 2 || sceneID == 4 && leavesEnabled)
                 MelonCoroutines.Start(SwapLightmap(((ValueChange<bool>)e).Value));
         }
 
@@ -216,7 +216,7 @@ namespace RUMBLECherryBlossoms
                 {
                     rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOT());
                 }
-                if (sceneID == 2 || sceneID == 4)
+                if ((sceneID == 2 || sceneID == 4) && leavesEnabled)
                 {
                     MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
                 }
@@ -407,7 +407,13 @@ namespace RUMBLECherryBlossoms
         {
             if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
             isRainbow = false;
+
+            if (!leavesEnabled && (sceneID == 2 || sceneID == 4))
+            {
+                MelonCoroutines.Start(SwapLightmap());
+            }
             leavesEnabled = true;
+
             switch (colour.ToLower())
             {
                 case "cherry":
@@ -435,6 +441,10 @@ namespace RUMBLECherryBlossoms
                     if (rainbowCoroutine != null)
                     {
                         MelonCoroutines.Stop(rainbowCoroutine);
+                    }
+                    if (sceneID == 2 || sceneID == 4)
+                    {
+                        MelonCoroutines.Start(SwapLightmap(true));
                     }
                     break;
             }
@@ -536,7 +546,7 @@ namespace RUMBLECherryBlossoms
 
         private void UpdateColours(bool reset = false, string type = "all")
         {
-            if ((type == "leaves" || type == "all"))
+            if (type == "leaves" || type == "all")
             {
                 if (leafObjects.Count != 0)
                 {
@@ -588,7 +598,7 @@ namespace RUMBLECherryBlossoms
                         }
                     }
 
-                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].Value)
+                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled)
                     {
                         MelonCoroutines.Start(SwapLightmap());
                     }
@@ -642,7 +652,6 @@ namespace RUMBLECherryBlossoms
                     foreach (GameObject rootObject in rootObjects)
                     {
                         MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
-                        renderers.Add(renderer);
                         rootMaterial = renderer.material;
                         if (reset || !rootsEnabled)
                         {
