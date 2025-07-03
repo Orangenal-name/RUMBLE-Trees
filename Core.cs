@@ -22,7 +22,8 @@ namespace RUMBLECherryBlossoms
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla", "flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla"];
+        private string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public Validation(string type)
         {
             this.type = type;
@@ -43,6 +44,7 @@ namespace RUMBLECherryBlossoms
             }
             else // Must be a preset
             {
+                if (stones.Contains(Input.ToLower())) return true;
                 if (themes.Contains(Input.ToLower()) && type == "leaf") return true;
                 if (Input.ToLower() == "rainbow" && type == "root") return true;
                 if (Input.ToLower() == "vanilla" && type == "root") return true;
