@@ -5,6 +5,9 @@ using RumbleModUI;
 using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 using System.Collections;
 using System.Text.RegularExpressions;
+using Il2CppRUMBLE.Combat.ShiftStones;
+using System.Runtime.CompilerServices;
+using Il2CppExitGames.Client.Photon;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -14,12 +17,12 @@ namespace RUMBLECherryBlossoms
 {
     public static class BuildInfo
     {
-        public const string Version = "1.4.1";
+        public const string Version = "1.5.0";
     }
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla", "flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public Validation(string type)
         {
             this.type = type;
@@ -52,7 +55,8 @@ namespace RUMBLECherryBlossoms
     {
         internal static Color[] shades = new Color[3];
         internal static Color[] originalShades = new Color[5];
-        private bool[] originalSaved = [false, false, false];
+        private Material[] originalMats = new Material[2];
+        private bool[] originalSaved = [false, false, false, false, false];
         private Color selectedLeafColour;
         private Color selectedRootColour;
         private Color cherryColour = new Color(0.86f, 0.54f, 0.9f, 1f);
@@ -85,6 +89,8 @@ namespace RUMBLECherryBlossoms
         private bool isRainbowRoot = false;
         private bool leavesEnabled = true;
         private bool rootsEnabled = false;
+        private string stoneLeaves = "none";
+        private string stoneRoots = "none";
         Mod RumbleTrees = new Mod();
 
         // Code for loading custom lightmaps (they're just desaturated versions of the default ones)
@@ -142,7 +148,7 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.ModName = "RumbleTrees";
             RumbleTrees.ModVersion = BuildInfo.Version;
             RumbleTrees.SetFolder("RumbleTrees");
-            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)", new Tags { IsSummary = true });
+            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)\nFlow\nVolatile\nAdamant\nCharge\nStubborn\nGuard\nVigor\nSurge", new Tags { IsSummary = true });
 
             RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables custom tree colours on the pit map", new Tags());
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables custom tree colours on the ring map", new Tags());
@@ -151,7 +157,7 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all leaf colours", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" a shiftstone, or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
@@ -250,6 +256,7 @@ namespace RUMBLECherryBlossoms
             VFXsObject = null;
             wasSceneChanged = false;
             wasLightmapChanged = false;
+            originalSaved[3] = false;
 
             if (sceneName == "Map0")
             {
@@ -301,7 +308,7 @@ namespace RUMBLECherryBlossoms
             else
             {
                 // Execute the code, or else...
-                return; // (This only prevents errors in the loader)
+                return; // (This only prevents errors in the loader, since there's no trees there)
             }
 
             if (!(bool)RumbleTrees.Settings[sceneID].SavedValue) return;
@@ -345,9 +352,12 @@ namespace RUMBLECherryBlossoms
 
         public void setCustom(string input, string type)
         {
+            MelonLogger.Msg("setCustomColour");
             rootsEnabled = true;
             if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
+            if (type == "roots") stoneRoots = "none";
             isRainbowRoot = false;
+            string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
             if (input.ToLower() == "rainbow" && type == "roots")
             {
                 isRainbowRoot = true;
@@ -361,6 +371,10 @@ namespace RUMBLECherryBlossoms
             {
                 rootsEnabled = false;
                 return;
+            }
+            else if (type == "root" && stones.Contains(input.ToLower()))
+            {
+                stoneRoots = input.ToLower();
             }
             Color colour;
             if (input.Contains(" "))
@@ -405,6 +419,7 @@ namespace RUMBLECherryBlossoms
 
         public void setSelectedColour(string colour, bool custom = false)
         {
+            MelonLogger.Msg("setSelectedColour");
             if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
             isRainbow = false;
 
@@ -413,6 +428,9 @@ namespace RUMBLECherryBlossoms
                 MelonCoroutines.Start(SwapLightmap());
             }
             leavesEnabled = true;
+            stoneRoots = "none";
+
+            MelonLogger.Msg(colour);
 
             switch (colour.ToLower())
             {
@@ -446,6 +464,30 @@ namespace RUMBLECherryBlossoms
                     {
                         MelonCoroutines.Start(SwapLightmap(true));
                     }
+                    break;
+                case "flow":
+                    stoneLeaves = "FlowStone";
+                    break;
+                case "volatile":
+                    stoneLeaves = "VolatileStone";
+                    break;
+                case "adamant":
+                    stoneLeaves = "AdamantStone";
+                    break;
+                case "charge":
+                    stoneLeaves = "ChargeStone";
+                    break;
+                case "stubborn":
+                    stoneLeaves = "StubbornStone";
+                    break;
+                case "guard":
+                    stoneLeaves = "GuardStone";
+                    break;
+                case "vigor":
+                    stoneLeaves = "VigorStone";
+                    break;
+                case "surge":
+                    stoneLeaves = "SurgeStone";
                     break;
             }
         }
@@ -544,6 +586,22 @@ namespace RUMBLECherryBlossoms
             }
         }
 
+        IEnumerator SwapMaterial(MeshRenderer renderer, string type)
+        {
+            // Setting immediately on scene change doesn't change the lightmap index??
+            yield return new WaitForSeconds(0.2f);
+
+            MelonLogger.Msg("Setting the shiftstone mat");
+            List<GameObject> HiddenStones = new List<GameObject>();
+
+            for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
+            {
+                HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
+            }
+            GameObject stone = HiddenStones.Where(i => i.name == (type == "leaves" ? stoneLeaves : stoneRoots)).First();
+            renderer.material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
+        }
+
         private void UpdateColours(bool reset = false, string type = "all")
         {
             if (type == "leaves" || type == "all")
@@ -563,6 +621,8 @@ namespace RUMBLECherryBlossoms
                             {
                                 if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
                             }
+                            renderer.material = originalMats[0];
+                            leafMaterial = renderer.material;
                             leafMaterial.SetColor(LCT1, originalShades[2]);
                             leafMaterial.SetColor(LCB1, originalShades[0]);
                             leafMaterial.SetColor(LCT2, originalShades[2]);
@@ -591,14 +651,28 @@ namespace RUMBLECherryBlossoms
                                 originalShades[0] = leafMaterial.GetColor(LCB1);
                                 originalSaved[0] = true;
                             }
-                            leafMaterial.SetColor(LCT1, shades[2]);
-                            leafMaterial.SetColor(LCB1, shades[0]);
-                            leafMaterial.SetColor(LCT2, shades[2]);
-                            if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
+                            if (!originalSaved[3])
+                            {
+                                originalMats[0] = leafMaterial;
+                                originalSaved[3] = true;
+                            }
+                            if (stoneLeaves == "none")
+                            {
+                                renderer.material = originalMats[0];
+                                leafMaterial = renderer.material;
+                                leafMaterial.SetColor(LCT1, shades[2]);
+                                leafMaterial.SetColor(LCB1, shades[0]);
+                                leafMaterial.SetColor(LCT2, shades[2]);
+                                if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
+                            }
+                            else
+                            {
+                                MelonCoroutines.Start(SwapMaterial(renderer, "leaves"));
+                            }
                         }
                     }
 
-                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled)
+                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled && stoneLeaves != "none")
                     {
                         MelonCoroutines.Start(SwapLightmap());
                     }
@@ -660,6 +734,8 @@ namespace RUMBLECherryBlossoms
                             {
                                 if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
                             }
+                            renderer.material = originalMats[1];
+                            rootMaterial = renderer.material;
                             rootMaterial.SetColor(RC1, originalShades[3]);
                             rootMaterial.SetColor(RC2, originalShades[4]);
 
@@ -675,19 +751,32 @@ namespace RUMBLECherryBlossoms
                                 originalShades[4] = rootMaterial.GetColor(RC2);
                                 originalSaved[2] = true;
                             }
+                            if (!originalSaved[4])
+                            {
+                                originalMats[1] = rootMaterial;
+                                originalSaved[4] = true;
+                            }
+                            if (stoneRoots == "none")
+                            {
+                                renderer.material = originalMats[0];
+                                leafMaterial = renderer.material;
+                                Color.RGBToHSV(selectedRootColour, out float hue, out float sat, out float val);
 
-                            Color.RGBToHSV(selectedRootColour, out float hue, out float sat, out float val);
+                                if (sat > 0.9f) sat = 0.9f;
+                                if (sat < 0.1f) sat = 0.1f;
+                                if (val > 0.9f) val = 0.9f;
+                                if (val < 0.1f) val = 0.1f;
 
-                            if (sat > 0.9f) sat = 0.9f;
-                            if (sat < 0.1f) sat = 0.1f;
-                            if (val > 0.9f) val = 0.9f;
-                            if (val < 0.1f) val = 0.1f;
+                                shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
+                                shades[1] = Color.HSVToRGB(hue, sat, val);
 
-                            shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
-                            shades[1] = Color.HSVToRGB(hue, sat, val);
-
-                            rootMaterial.SetColor(RC1, shades[0]);
-                            rootMaterial.SetColor(RC2, shades[1]);
+                                rootMaterial.SetColor(RC1, shades[0]);
+                                rootMaterial.SetColor(RC2, shades[1]);
+                            }
+                            else
+                            {
+                                MelonCoroutines.Start(SwapMaterial(renderer, "roots"));
+                            }
                         }
                     }
                 }
