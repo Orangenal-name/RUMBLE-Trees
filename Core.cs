@@ -259,6 +259,7 @@ namespace RUMBLECherryBlossoms
             wasSceneChanged = false;
             wasLightmapChanged = false;
             originalSaved[3] = false;
+            originalSaved[4] = false;
 
             if (sceneName == "Map0")
             {
@@ -354,7 +355,6 @@ namespace RUMBLECherryBlossoms
 
         public void setCustom(string input, string type)
         {
-            MelonLogger.Msg("setCustomColour");
             rootsEnabled = true;
             if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
             if (type == "roots") stoneRoots = "none";
@@ -374,9 +374,36 @@ namespace RUMBLECherryBlossoms
                 rootsEnabled = false;
                 return;
             }
-            else if (type == "root" && stones.Contains(input.ToLower()))
+            else if (type == "roots" && stones.Contains(input.ToLower()))
             {
-                stoneRoots = input.ToLower();
+                switch (input.ToLower())
+                {
+                    case "flow":
+                        stoneRoots = "FlowStone";
+                        break;
+                    case "volatile":
+                        stoneRoots = "VolatileStone";
+                        break;
+                    case "adamant":
+                        stoneRoots = "AdamantStone";
+                        break;
+                    case "charge":
+                        stoneRoots = "ChargeStone";
+                        break;
+                    case "stubborn":
+                        stoneRoots = "StubbornStone";
+                        break;
+                    case "guard":
+                        stoneRoots = "GuardStone";
+                        break;
+                    case "vigor":
+                        stoneRoots = "VigorStone";
+                        break;
+                    case "surge":
+                        stoneRoots = "SurgeStone";
+                        break;
+                }
+                return;
             }
             Color colour;
             if (input.Contains(" "))
@@ -421,7 +448,6 @@ namespace RUMBLECherryBlossoms
 
         public void setSelectedColour(string colour, bool custom = false)
         {
-            MelonLogger.Msg("setSelectedColour");
             if (rainbowCoroutine != null) MelonCoroutines.Stop(rainbowCoroutine);
             isRainbow = false;
 
@@ -430,9 +456,7 @@ namespace RUMBLECherryBlossoms
                 MelonCoroutines.Start(SwapLightmap());
             }
             leavesEnabled = true;
-            stoneRoots = "none";
-
-            MelonLogger.Msg(colour);
+            stoneLeaves = "none";
 
             switch (colour.ToLower())
             {
@@ -593,7 +617,6 @@ namespace RUMBLECherryBlossoms
             // Setting immediately on scene change doesn't change the lightmap index??
             yield return new WaitForSeconds(0.2f);
 
-            MelonLogger.Msg("Setting the shiftstone mat");
             List<GameObject> HiddenStones = new List<GameObject>();
 
             for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
@@ -674,7 +697,7 @@ namespace RUMBLECherryBlossoms
                         }
                     }
 
-                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled && stoneLeaves != "none")
+                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled && stoneLeaves == "none")
                     {
                         MelonCoroutines.Start(SwapLightmap());
                     }
@@ -758,20 +781,21 @@ namespace RUMBLECherryBlossoms
                                 originalMats[1] = rootMaterial;
                                 originalSaved[4] = true;
                             }
+
+                            Color.RGBToHSV(selectedRootColour, out float hue, out float sat, out float val);
+
+                            if (sat > 0.9f) sat = 0.9f;
+                            if (sat < 0.1f) sat = 0.1f;
+                            if (val > 0.9f) val = 0.9f;
+                            if (val < 0.1f) val = 0.1f;
+
+                            shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
+                            shades[1] = Color.HSVToRGB(hue, sat, val);
+
                             if (stoneRoots == "none")
                             {
-                                renderer.material = originalMats[0];
+                                renderer.material = originalMats[1];
                                 leafMaterial = renderer.material;
-                                Color.RGBToHSV(selectedRootColour, out float hue, out float sat, out float val);
-
-                                if (sat > 0.9f) sat = 0.9f;
-                                if (sat < 0.1f) sat = 0.1f;
-                                if (val > 0.9f) val = 0.9f;
-                                if (val < 0.1f) val = 0.1f;
-
-                                shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
-                                shades[1] = Color.HSVToRGB(hue, sat, val);
-
                                 rootMaterial.SetColor(RC1, shades[0]);
                                 rootMaterial.SetColor(RC2, shades[1]);
                             }
