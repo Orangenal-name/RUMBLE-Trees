@@ -18,7 +18,10 @@
 <img alt="Screenshot4" src="https://i.imgur.com/yq2Eeor.png" style="width:500px; height:250px; object-fit:cover;">
 
 ### RAINBOW
-<img alt="Screenshot4" src="https://i.imgur.com/sxxV5g9.gif" style="width:500px; height:250px; object-fit:cover;">
+<img alt="Screenshot5" src="https://i.imgur.com/sxxV5g9.gif" style="width:500px; height:250px; object-fit:cover;">
+
+### Shiftstones
+<img alt="Screenshot6" src="https://i.imgur.com/GtNuqsi.png" style="width:500px; height:250px; object-fit:cover;">
 
 <br>
 
