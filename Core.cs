@@ -612,19 +612,12 @@ namespace RUMBLECherryBlossoms
             }
         }
 
-        IEnumerator SwapMaterial(MeshRenderer renderer, string type)
+        IEnumerator SwapMaterial(MeshRenderer renderer, Material material)
         {
             // Setting immediately on scene change doesn't change the lightmap index??
             yield return new WaitForSeconds(0.2f);
 
-            List<GameObject> HiddenStones = new List<GameObject>();
-
-            for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
-            {
-                HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
-            }
-            GameObject stone = HiddenStones.Where(i => i.name == (type == "leaves" ? stoneLeaves : stoneRoots)).First();
-            renderer.material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
+            renderer.material = material;
         }
 
         private void UpdateColours(bool reset = false, string type = "all")
@@ -692,7 +685,17 @@ namespace RUMBLECherryBlossoms
                             }
                             else
                             {
-                                MelonCoroutines.Start(SwapMaterial(renderer, "leaves"));
+                                List<GameObject> HiddenStones = new List<GameObject>();
+
+                                for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
+                                {
+                                    HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
+                                }
+                                GameObject stone = HiddenStones.Where(i => i.name == stoneLeaves).First();
+                                Material material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
+                                MelonCoroutines.Start(SwapMaterial(renderer, material));
+
+                                selectedLeafColour = material.color;
                             }
                         }
                     }
@@ -801,7 +804,15 @@ namespace RUMBLECherryBlossoms
                             }
                             else
                             {
-                                MelonCoroutines.Start(SwapMaterial(renderer, "roots"));
+                                List<GameObject> HiddenStones = new List<GameObject>();
+
+                                for (int i = 0; i < ShiftstoneLookupTable.instance.availableShiftstones.Count; i++)
+                                {
+                                    HiddenStones.Add(ShiftstoneLookupTable.instance.availableShiftstones[i].gameObject);
+                                }
+                                GameObject stone = HiddenStones.Where(i => i.name == stoneRoots).First();
+                                Material material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
+                                MelonCoroutines.Start(SwapMaterial(renderer, material));
                             }
                         }
                     }
