@@ -1,13 +1,13 @@
-﻿using MelonLoader;
-using UnityEngine;
-using UnityEngine.VFX;
+﻿using Harmony;
+using HarmonyLib;
+using Il2CppRUMBLE.Combat.ShiftStones;
+using MelonLoader;
 using RumbleModUI;
-using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 using System.Collections;
 using System.Text.RegularExpressions;
-using Il2CppRUMBLE.Combat.ShiftStones;
-using System.Runtime.CompilerServices;
-using Il2CppExitGames.Client.Photon;
+using UnityEngine;
+using UnityEngine.VFX;
+using BuildInfo = RUMBLECherryBlossoms.BuildInfo;
 
 [assembly: MelonInfo(typeof(RUMBLECherryBlossoms.Core), "RumbleTrees", BuildInfo.Version, "Orangenal", null)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -17,12 +17,12 @@ namespace RUMBLECherryBlossoms
 {
     public static class BuildInfo
     {
-        public const string Version = "1.5.0";
+        public const string Version = "1.6.0";
     }
 
     public class Validation : ValidationParameters
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow", "vanilla"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow"];
         private string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public Validation(string type)
         {
@@ -36,18 +36,20 @@ namespace RUMBLECherryBlossoms
 
             if (Regex.IsMatch(Input, rgbPattern))
             {
-                return true;
+                return !type.EndsWith("Mat");
             }
             else if (Regex.IsMatch(Input, hexPattern))
             {
-                return true;
+                return !type.EndsWith("Mat");
             }
             else // Must be a preset
             {
-                if (stones.Contains(Input.ToLower())) return true;
+                if (Input.ToLower() == "vanilla") return true;
+                if (stones.Contains(Input.ToLower()) && type.EndsWith("Mat")) return true;
                 if (themes.Contains(Input.ToLower()) && type == "leaf") return true;
                 if (Input.ToLower() == "rainbow" && type == "root") return true;
-                if (Input.ToLower() == "vanilla" && type == "root") return true;
+                if (Input.ToLower() == "leaves" && type == "rootMat") return true;
+                if (Input.ToLower() == "roots" && type == "leafMat") return true;
                 return false;
             }
         }
@@ -61,6 +63,7 @@ namespace RUMBLECherryBlossoms
         private bool[] originalSaved = [false, false, false, false, false];
         private Color selectedLeafColour;
         private Color selectedRootColour;
+        private Color selectedShiftstoneColour;
         private Color cherryColour = new Color(0.86f, 0.54f, 0.9f, 1f);
         private Color orangeColour = new Color(1.0f, 0.44f, 0.0f, 1f);
         private Color yellowColour = new Color(1.0f, 0.78f, 0.0f, 1f);
@@ -91,8 +94,9 @@ namespace RUMBLECherryBlossoms
         private bool isRainbowRoot = false;
         private bool leavesEnabled = true;
         private bool rootsEnabled = false;
-        private string stoneLeaves = "none";
-        private string stoneRoots = "none";
+        private string stoneLeaves = "vanilla";
+        private string stoneRoots = "vanilla";
+        private MeshRenderer[] tempRenderers = [];
         Mod RumbleTrees = new Mod();
 
         // Code for loading custom lightmaps (they're just desaturated versions of the default ones)
@@ -158,13 +162,17 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables custom tree colours in parks", new Tags());
             RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring and Parks, which look different and don't work properly with all leaf colours", new Tags());
 
-            RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" a shiftstone, or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name, or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\", or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"none,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
+            RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"none,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
             RumbleTrees.AddValidation("Leaf colour", new Validation("leaf"));
             RumbleTrees.AddValidation("Root colour", new Validation("root"));
+            RumbleTrees.AddValidation("Leaf material", new Validation("leafMat"));
+            RumbleTrees.AddValidation("Root material", new Validation("rootMat"));
 
             RumbleTrees.GetFromFile();
 
@@ -173,6 +181,8 @@ namespace RUMBLECherryBlossoms
             RumbleTrees.Settings[5].SavedValueChanged += OnLegacyChange;
             RumbleTrees.Settings[6].SavedValueChanged += OnColourChange;
             RumbleTrees.Settings[7].SavedValueChanged += OnRootChange;
+            RumbleTrees.Settings[8].SavedValueChanged += OnLeafMaterialChange;
+            RumbleTrees.Settings[9].SavedValueChanged += OnRootMaterialChange;
 
             UI.instance.UI_Initialized += OnUIInit;
 
@@ -184,6 +194,68 @@ namespace RUMBLECherryBlossoms
 
             string rootColour = (string)RumbleTrees.Settings[7].SavedValue;
             setCustom(rootColour, "roots");
+
+            switch (((string)RumbleTrees.Settings[8].SavedValue).ToLower())
+            {
+                case "flow":
+                    stoneLeaves = "FlowStone";
+                    break;
+                case "volatile":
+                    stoneLeaves = "VolatileStone";
+                    break;
+                case "adamant":
+                    stoneLeaves = "AdamantStone";
+                    break;
+                case "charge":
+                    stoneLeaves = "ChargeStone";
+                    break;
+                case "stubborn":
+                    stoneLeaves = "StubbornStone";
+                    break;
+                case "guard":
+                    stoneLeaves = "GuardStone";
+                    break;
+                case "vigor":
+                    stoneLeaves = "VigorStone";
+                    break;
+                case "surge":
+                    stoneLeaves = "SurgeStone";
+                    break;
+                case "roots":
+                    stoneLeaves = "roots";
+                    break;
+            }
+
+            switch (((string)RumbleTrees.Settings[9].SavedValue).ToLower())
+            {
+                case "flow":
+                    stoneRoots = "FlowStone";
+                    break;
+                case "volatile":
+                    stoneRoots = "VolatileStone";
+                    break;
+                case "adamant":
+                    stoneRoots = "AdamantStone";
+                    break;
+                case "charge":
+                    stoneRoots = "ChargeStone";
+                    break;
+                case "stubborn":
+                    stoneRoots = "StubbornStone";
+                    break;
+                case "guard":
+                    stoneRoots = "GuardStone";
+                    break;
+                case "vigor":
+                    stoneRoots = "VigorStone";
+                    break;
+                case "surge":
+                    stoneRoots = "SurgeStone";
+                    break;
+                case "leaves":
+                    stoneRoots = "leaves";
+                    break;
+            }
         }
 
         public void OnColourChange(object sender = null, EventArgs e = null)
@@ -194,14 +266,14 @@ namespace RUMBLECherryBlossoms
                 setCustom(newColour, "leaves");
             else setSelectedColour(newColour);
 
-            UpdateColours(type:"leaves");
+            UpdateColours(type: "leaves");
         }
 
         public void OnRootChange(object sender = null, EventArgs e = null)
         {
             string newColour = ((ValueChange<string>)e).Value;
             setCustom(newColour, "roots");
-            UpdateColours(type:"roots");
+            UpdateColours(type: "roots");
         }
 
         public void OnLegacyChange(object sender = null, EventArgs e = null)
@@ -215,7 +287,7 @@ namespace RUMBLECherryBlossoms
             if ((bool)RumbleTrees.Settings[sceneID].SavedValue != wasSceneChanged)
             {
                 UpdateColours(wasSceneChanged);
-                
+
                 if (!wasSceneChanged && isRainbow)
                 {
                     rainbowCoroutine = MelonCoroutines.Start(RAINBOW());
@@ -229,6 +301,95 @@ namespace RUMBLECherryBlossoms
                     MelonCoroutines.Start(SwapLightmap(wasSceneChanged || (bool)RumbleTrees.Settings[5].Value));
                 }
                 wasSceneChanged = !wasSceneChanged;
+            }
+        }
+
+        public void OnLeafMaterialChange(object sender = null, EventArgs e = null)
+        {
+            if (e != null)
+            {
+                ValueChange<string> changed = (ValueChange<string>)e;
+                switch (changed.Value.ToLower())
+                {
+                    case "flow":
+                        stoneLeaves = "FlowStone";
+                        break;
+                    case "volatile":
+                        stoneLeaves = "VolatileStone";
+                        break;
+                    case "adamant":
+                        stoneLeaves = "AdamantStone";
+                        break;
+                    case "charge":
+                        stoneLeaves = "ChargeStone";
+                        break;
+                    case "stubborn":
+                        stoneLeaves = "StubbornStone";
+                        break;
+                    case "guard":
+                        stoneLeaves = "GuardStone";
+                        break;
+                    case "vigor":
+                        stoneLeaves = "VigorStone";
+                        break;
+                    case "surge":
+                        stoneLeaves = "SurgeStone";
+                        break;
+                    case "roots":
+                        stoneLeaves = "roots";
+                        break;
+                    case "vanilla":
+                        stoneLeaves = "vanilla";
+                        string colour = (string)RumbleTrees.Settings[6].SavedValue;
+                        if (checkCustom(colour))
+                            setCustom(colour, "leaves");
+                        else setSelectedColour(colour);
+                        break;
+                }
+                UpdateColours(type: "leaves");
+            }
+        }
+
+        public void OnRootMaterialChange(object sender = null, EventArgs e = null)
+        {
+            if (e != null)
+            {
+                ValueChange<string> changed = (ValueChange<string>)e;
+                switch (changed.Value.ToLower())
+                {
+                    case "flow":
+                        stoneRoots = "FlowStone";
+                        break;
+                    case "volatile":
+                        stoneRoots = "VolatileStone";
+                        break;
+                    case "adamant":
+                        stoneRoots = "AdamantStone";
+                        break;
+                    case "charge":
+                        stoneRoots = "ChargeStone";
+                        break;
+                    case "stubborn":
+                        stoneRoots = "StubbornStone";
+                        break;
+                    case "guard":
+                        stoneRoots = "GuardStone";
+                        break;
+                    case "vigor":
+                        stoneRoots = "VigorStone";
+                        break;
+                    case "surge":
+                        stoneRoots = "SurgeStone";
+                        break;
+                    case "leaves":
+                        stoneRoots = "leaves";
+                        break;
+                    case "vanilla":
+                        stoneRoots = "vanilla";
+                        setCustom((string)RumbleTrees.Settings[7].SavedValue, "roots");
+                        break;
+                }
+                UpdateColours(type: "roots");
             }
         }
 
@@ -281,6 +442,15 @@ namespace RUMBLECherryBlossoms
                 leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/Root_leaves_003 (1)"));
                 leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__23_"));
                 leafObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__24_"));
+                //GameObject foliage = GameObject.Find("--------------SCENE--------------/Gym_Production/Main static group/Foliage/");
+                //for (int i = 0; i < foliage.transform.childCount; i++)
+                //{
+                //    foliage.transform.GetChild(i).gameObject.active = !foliage.transform.GetChild(i).gameObject.active;
+                //    if (foliage.transform.GetChild(i).gameObject.active)
+                //    {
+                //        leafObjects.Add(foliage.transform.GetChild(i).gameObject);
+                //    }
+                //}
 
                 rootObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Sub static group/Scene_roots/Test_root_1_middetail/Cylinder_014__6_"));
                 rootObjects.Add(GameObject.Find("--------------SCENE--------------/Gym_Production/Sub static group/Scene_roots/Test_root_1_middetail/Cylinder_015__1_"));
@@ -301,7 +471,8 @@ namespace RUMBLECherryBlossoms
                 leafObjects.Add(GameObject.Find("________________SCENE_________________/Park/Main static group/Leaves/Leave_sphere_park_003"));
 
                 GameObject Roots = GameObject.Find("________________SCENE_________________/Park/Main static group/Root/");
-                for (int i = 0; i < Roots.transform.childCount; i++) {
+                for (int i = 0; i < Roots.transform.childCount; i++)
+                {
                     rootObjects.Add(Roots.transform.GetChild(i).gameObject);
                 }
 
@@ -357,9 +528,7 @@ namespace RUMBLECherryBlossoms
         {
             rootsEnabled = true;
             if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
-            if (type == "roots") stoneRoots = "none";
             isRainbowRoot = false;
-            string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
             if (input.ToLower() == "rainbow" && type == "roots")
             {
                 isRainbowRoot = true;
@@ -374,37 +543,7 @@ namespace RUMBLECherryBlossoms
                 rootsEnabled = false;
                 return;
             }
-            else if (type == "roots" && stones.Contains(input.ToLower()))
-            {
-                switch (input.ToLower())
-                {
-                    case "flow":
-                        stoneRoots = "FlowStone";
-                        break;
-                    case "volatile":
-                        stoneRoots = "VolatileStone";
-                        break;
-                    case "adamant":
-                        stoneRoots = "AdamantStone";
-                        break;
-                    case "charge":
-                        stoneRoots = "ChargeStone";
-                        break;
-                    case "stubborn":
-                        stoneRoots = "StubbornStone";
-                        break;
-                    case "guard":
-                        stoneRoots = "GuardStone";
-                        break;
-                    case "vigor":
-                        stoneRoots = "VigorStone";
-                        break;
-                    case "surge":
-                        stoneRoots = "SurgeStone";
-                        break;
-                }
-                return;
-            }
+            
             Color colour;
             if (input.Contains(" "))
             {
@@ -456,7 +595,6 @@ namespace RUMBLECherryBlossoms
                 MelonCoroutines.Start(SwapLightmap());
             }
             leavesEnabled = true;
-            stoneLeaves = "none";
 
             switch (colour.ToLower())
             {
@@ -491,30 +629,6 @@ namespace RUMBLECherryBlossoms
                         MelonCoroutines.Start(SwapLightmap(true));
                     }
                     break;
-                case "flow":
-                    stoneLeaves = "FlowStone";
-                    break;
-                case "volatile":
-                    stoneLeaves = "VolatileStone";
-                    break;
-                case "adamant":
-                    stoneLeaves = "AdamantStone";
-                    break;
-                case "charge":
-                    stoneLeaves = "ChargeStone";
-                    break;
-                case "stubborn":
-                    stoneLeaves = "StubbornStone";
-                    break;
-                case "guard":
-                    stoneLeaves = "GuardStone";
-                    break;
-                case "vigor":
-                    stoneLeaves = "VigorStone";
-                    break;
-                case "surge":
-                    stoneLeaves = "SurgeStone";
-                    break;
             }
         }
 
@@ -522,14 +636,14 @@ namespace RUMBLECherryBlossoms
         {
             WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
             int speed = (int)RumbleTrees.Settings[8].SavedValue;
-            int FrameCounter = 10/(speed*10)-1;
+            int FrameCounter = 10 / (speed * 10) - 1;
             while (true)
             {
                 if (FrameCounter >= 2)
                 {
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
-                    UpdateColours(type:"leaves");
+                    UpdateColours(type: "leaves");
                     if (speed > 10) rainbowHue += speed / 10;
                     rainbowHue++;
                     FrameCounter = 0;
@@ -614,7 +728,6 @@ namespace RUMBLECherryBlossoms
 
         IEnumerator SwapMaterial(MeshRenderer renderer, Material material)
         {
-            // Setting immediately on scene change doesn't change the lightmap index??
             yield return new WaitForSeconds(0.2f);
 
             renderer.material = material;
@@ -632,7 +745,7 @@ namespace RUMBLECherryBlossoms
                         renderers.Add(renderer);
                         leafMaterial = renderer.material;
 
-                        if (reset || !leavesEnabled)
+                        if (reset || (!leavesEnabled && stoneLeaves == "vanilla"))
                         {
                             if (!originalSaved[0]) continue;
                             if (isRainbow)
@@ -674,7 +787,7 @@ namespace RUMBLECherryBlossoms
                                 originalMats[0] = leafMaterial;
                                 originalSaved[3] = true;
                             }
-                            if (stoneLeaves == "none")
+                            if (stoneLeaves == "vanilla")
                             {
                                 renderer.material = originalMats[0];
                                 leafMaterial = renderer.material;
@@ -682,6 +795,22 @@ namespace RUMBLECherryBlossoms
                                 leafMaterial.SetColor(LCB1, shades[0]);
                                 leafMaterial.SetColor(LCT2, shades[2]);
                                 if (sceneID != 3) leafMaterial.SetColor(LCB2, shades[0]);
+                            }
+                            else if (stoneLeaves == "roots")
+                            {
+                                if (originalSaved[4])
+                                {
+                                    MelonCoroutines.Start(SwapMaterial(renderer, originalMats[1]));
+                                }
+                                else
+                                {
+                                    tempRenderers = tempRenderers.Append(renderer).ToArray();
+                                }
+                                originalMats[0].SetColor(LCT1, shades[2]);
+                                originalMats[0].SetColor(LCB1, shades[0]);
+                                originalMats[0].SetColor(LCT2, shades[2]);
+                                if (sceneID != 3) originalMats[0].SetColor(LCB2, shades[0]);
+                                selectedShiftstoneColour = selectedRootColour;
                             }
                             else
                             {
@@ -695,12 +824,25 @@ namespace RUMBLECherryBlossoms
                                 Material material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
                                 MelonCoroutines.Start(SwapMaterial(renderer, material));
 
-                                selectedLeafColour = material.color;
+                                originalMats[0].SetColor(LCT1, shades[2]);
+                                originalMats[0].SetColor(LCB1, shades[0]);
+                                originalMats[0].SetColor(LCT2, shades[2]);
+                                if (sceneID != 3) originalMats[0].SetColor(LCB2, shades[0]);
+
+                                selectedShiftstoneColour = material.color;
+                            }
+
+                            if (!leavesEnabled)
+                            {
+                                originalMats[0].SetColor(LCT1, originalShades[2]);
+                                originalMats[0].SetColor(LCB1, originalShades[0]);
+                                originalMats[0].SetColor(LCT2, originalShades[2]);
+                                originalMats[0].SetColor(LCB2, originalShades[0]);
                             }
                         }
                     }
 
-                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled && stoneLeaves == "none")
+                    if ((sceneID == 2 || sceneID == 4) && !(bool)RumbleTrees.Settings[5].SavedValue && leavesEnabled && stoneLeaves == "vanilla")
                     {
                         MelonCoroutines.Start(SwapLightmap());
                     }
@@ -719,7 +861,7 @@ namespace RUMBLECherryBlossoms
                         GradientColorKey[] keys = new GradientColorKey[2];
                         Gradient gradient = leafVFX.GetGradient(FLG);
 
-                        if (reset || !leavesEnabled)
+                        if (reset || (!leavesEnabled && stoneLeaves == "vanilla"))
                         {
                             if (!originalSaved[1]) continue;
 
@@ -735,7 +877,16 @@ namespace RUMBLECherryBlossoms
                             originalSaved[1] = true;
                         }
 
-                        keys[0].color = shades[1]; keys[1].color = shades[1];
+                        if (stoneLeaves == "vanilla")
+                        {
+                            keys[0].color = shades[1];
+                            keys[1].color = shades[1];
+                        }
+                        else
+                        {
+                            keys[0].color = selectedShiftstoneColour;
+                            keys[1].color = selectedShiftstoneColour;
+                        }
                         gradient.colorKeys = keys;
 
                         leafVFX.SetGradient(FLG, gradient);
@@ -755,20 +906,7 @@ namespace RUMBLECherryBlossoms
                     {
                         MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
                         rootMaterial = renderer.material;
-                        if (reset || !rootsEnabled)
-                        {
-                            if (!originalSaved[2]) continue;
-                            if (isRainbowRoot)
-                            {
-                                if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
-                            }
-                            renderer.material = originalMats[1];
-                            rootMaterial = renderer.material;
-                            rootMaterial.SetColor(RC1, originalShades[3]);
-                            rootMaterial.SetColor(RC2, originalShades[4]);
 
-                            continue;
-                        }
 
                         if (rootMaterial != null)
                         {
@@ -785,6 +923,30 @@ namespace RUMBLECherryBlossoms
                                 originalSaved[4] = true;
                             }
 
+                            if (tempRenderers.Length != 0)
+                            {
+                                foreach (MeshRenderer tempRenderer in tempRenderers)
+                                {
+                                    MelonCoroutines.Start(SwapMaterial(tempRenderer, originalMats[1]));
+                                }
+                                tempRenderers = [];
+                            }
+                            if (reset || (!rootsEnabled && stoneRoots == "vanilla"))
+                            {
+                                if (!originalSaved[2]) continue;
+                                if (isRainbowRoot)
+                                {
+                                    if (rainbowRootCoroutine != null) MelonCoroutines.Stop(rainbowRootCoroutine);
+                                }
+
+                                renderer.material = originalMats[1];
+                                rootMaterial = renderer.material;
+                                rootMaterial.SetColor(RC1, originalShades[3]);
+                                rootMaterial.SetColor(RC2, originalShades[4]);
+
+                                continue;
+                            }
+
                             Color.RGBToHSV(selectedRootColour, out float hue, out float sat, out float val);
 
                             if (sat > 0.9f) sat = 0.9f;
@@ -795,12 +957,18 @@ namespace RUMBLECherryBlossoms
                             shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
                             shades[1] = Color.HSVToRGB(hue, sat, val);
 
-                            if (stoneRoots == "none")
+                            if (stoneRoots == "vanilla")
                             {
                                 renderer.material = originalMats[1];
-                                leafMaterial = renderer.material;
+                                rootMaterial = renderer.material;
                                 rootMaterial.SetColor(RC1, shades[0]);
                                 rootMaterial.SetColor(RC2, shades[1]);
+                            }
+                            else if (stoneRoots == "leaves")
+                            {
+                                MelonCoroutines.Start(SwapMaterial(renderer, originalMats[0]));
+                                originalMats[1].SetColor(RC1, shades[0]);
+                                originalMats[1].SetColor(RC2, shades[1]);
                             }
                             else
                             {
@@ -813,6 +981,42 @@ namespace RUMBLECherryBlossoms
                                 GameObject stone = HiddenStones.Where(i => i.name == stoneRoots).First();
                                 Material material = stone.transform.GetChild(0).GetComponent<MeshRenderer>().material;
                                 MelonCoroutines.Start(SwapMaterial(renderer, material));
+                                originalMats[1].SetColor(RC1, shades[0]);
+                                originalMats[1].SetColor(RC2, shades[1]);
+                            }
+
+                            if (!rootsEnabled)
+                            {
+                                originalMats[1].SetColor(RC1, originalShades[3]);
+                                originalMats[1].SetColor(RC2, originalShades[4]);
+                            }
+                            if (stoneLeaves == "roots")
+                            {
+                                if (rootsEnabled) selectedShiftstoneColour = shades[1];
+                                else selectedShiftstoneColour = originalShades[4];
+                                if (VFXsObject != null)
+                                {
+                                    VisualEffect leafVFX;
+                                    for (int i = 0; i < VFXsObject.transform.GetChildCount(); i++)
+                                    {
+                                        leafVFX = VFXsObject.transform.GetChild(i).gameObject.GetComponent<VisualEffect>();
+                                        GradientColorKey[] keys = new GradientColorKey[2];
+                                        Gradient gradient = leafVFX.GetGradient(FLG);
+
+                                        if (stoneLeaves == "roots")
+                                        {
+                                            keys[0].color = selectedShiftstoneColour;
+                                            keys[1].color = selectedShiftstoneColour;
+                                        }
+                                        gradient.colorKeys = keys;
+
+                                        leafVFX.SetGradient(FLG, gradient);
+                                    }
+                                }
+                                else if (sceneID == 0 || sceneID == 3)
+                                {
+                                    MelonLogger.Warning("Leaf VFX object not found!");
+                                }
                             }
                         }
                     }
