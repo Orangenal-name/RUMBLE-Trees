@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -158,6 +158,9 @@
 		</Reference>
 		<Reference Include="ModUI">
 		  <HintPath>..\..\Program Files\Steam\steamapps\common\RUMBLE\Mods\ModUI.dll</HintPath>
+		</Reference>
+		<Reference Include="RumbleModdingAPI">
+		  <HintPath>..\..\Program Files\Steam\steamapps\common\RUMBLE\Mods\RumbleModdingAPI.dll</HintPath>
 		</Reference>
 		<Reference Include="Unity.Burst">
 			<HintPath>D:\Program Files\Steam\steamapps\common\RUMBLE\MelonLoader\Il2CppAssemblies\Unity.Burst.dll</HintPath>
@@ -469,9 +472,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <EmbeddedResource Include="Resources\GYM0_final.png" />
-	  <EmbeddedResource Include="Resources\MAP0_final.png" />
-	  <EmbeddedResource Include="Resources\Park0_final.png" />
+	  <EmbeddedResource Include="Resources\rumbletrees" />
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">

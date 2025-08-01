@@ -6,7 +6,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.VFX;
-using System.Reflection;
+using RumbleModdingAPI;
 using BuildInfo = RumbleTrees.BuildInfo;
 
 [assembly: MelonInfo(typeof(RumbleTrees.Core), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
@@ -16,7 +16,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.0.0";
+        public const string Version = "2.1.1";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
@@ -64,6 +64,7 @@ namespace RumbleTrees
         private int sceneID = -1;
         private bool enabled = true;
         private bool wasLightmapChanged = false;
+        private AssetBundle assetBundle = null;
         private Mod RumbleTrees = new Mod();
 
         // Property IDs
@@ -124,54 +125,53 @@ namespace RumbleTrees
         private Color yellowColour = new Color(1.0f, 0.78f, 0.0f, 1f);
         private Color redColour = new Color(0.66f, 0.0f, 0.0f, 1f);
 
-        public static Texture2D LoadEmbeddedPNG(string resourceName)
+        // Dynamic in case I want to load other things in future
+        private dynamic LoadAsset<T>(string assetName, AssetBundle assetBundle)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-
-            string fileName = "RumbleTrees.Resources.";
-
-            if (resourceName == "Gym_Lightmap")
+            if (assetBundle == null)
             {
-                fileName += "GYM0_final.png";
-            }
-            else if (resourceName == "Ring_Lightmap")
-            {
-                fileName += "MAP0_final.png";
-            }
-            else if (resourceName == "Park_Lightmap")
-            {
-                fileName += "Park0_final.png";
-            }
-            else
-            {
-                MelonLogger.Error($"No texture found with the name: {resourceName}");
+                MelonLogger.Error("AssetBundle cannot be null!");
                 return null;
             }
 
-            using (Stream stream = assembly.GetManifestResourceStream(fileName))
+            else if (assetName == null || assetName == "")
             {
-                if (stream == null)
+                MelonLogger.Error("No asset name provided!");
+                return null;
+            }
+
+            if (typeof(T) == typeof(Texture2D))
+            {
+                Texture2D asset;
+                if (assetName == "Gym_Lightmap")
                 {
-                    Debug.LogError($"Resource '{resourceName}' not found!");
+                    asset = assetBundle.LoadAsset<Texture2D>("GYM0_final");
+                }
+                else if (assetName == "Ring_Lightmap")
+                {
+                    asset = assetBundle.LoadAsset<Texture2D>("MAP0_final");
+                }
+                else if (assetName == "Park_Lightmap")
+                {
+                    asset = assetBundle.LoadAsset<Texture2D>("park0_final");
+                }
+                else
+                {
+                    MelonLogger.Error($"No texture found with the name: {assetName}");
                     return null;
                 }
 
-                byte[] data;
-                using (var ms = new MemoryStream())
-                {
-                    stream.CopyTo(ms);
-                    data = ms.ToArray();
-                }
+                if (asset == null)
+                    MelonLogger.Error("Failed to load texture from AssetBundle!");
+                else
+                    asset.Apply(true, false); // Make sure it's marked readable
 
-                Texture2D tex = new Texture2D(2, 2); // size doesn't matter, will be replaced
-                if (!tex.LoadImage(data))
-                {
-                    Debug.LogError($"Failed to load texture from resource '{resourceName}'");
-                    return null;
-                }
-
-                tex.Apply();
-                return tex;
+                return asset;
+            }
+            else
+            {
+                MelonLogger.Error("No valid type provided!");
+                return null;
             }
         }
 
@@ -277,6 +277,8 @@ namespace RumbleTrees
             RumbleTrees.Settings[9].SavedValueChanged += OnRootMaterialChange;
 
             UI.instance.UI_Initialized += OnUIInit;
+
+            assetBundle = Calls.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.rumbletrees", "rumbletrees");
 
             // The property IDs aren't always the same for some reason, so we get them again every time
             LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
@@ -965,7 +967,7 @@ namespace RumbleTrees
             if (!original && !wasLightmapChanged)
             {
                 string lightmapName = sceneName.Trim() + "_Lightmap";
-                Texture2D lightmap = LoadEmbeddedPNG(lightmapName);
+                Texture2D lightmap = LoadAsset<Texture2D>(lightmapName, assetBundle);
 
                 if (lightmap == null)
                 {
@@ -997,7 +999,7 @@ namespace RumbleTrees
             {
                 renderer.lightmapIndex = LightmapSettings.lightmaps.Length - 1;
             }
-            else if (sceneName == "Gym")
+            else if (sceneName != "Park")
             {
                 renderer.lightmapIndex = 0;
             }
