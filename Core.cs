@@ -258,8 +258,8 @@ namespace RumbleTrees
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
-            RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"vanilla,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
+            RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
+            RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
