@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.VFX;
 using RumbleModdingAPI;
 using BuildInfo = RumbleTrees.BuildInfo;
+using Random = System.Random;
 
 [assembly: MelonInfo(typeof(RumbleTrees.Core), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -16,7 +17,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.1.1";
+        public const string Version = "2.2.0";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
@@ -24,8 +25,12 @@ namespace RumbleTrees
 
     public class Validation : ValidationParameters
     {
+        // TODO: make root leaves not error on pit
+        // TODO: make random colours work for roots as well
         private string[] themes = ["cherry", "orange", "yellow", "red"];
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
+        public static string[] leafMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla", "roots"];
+        public static string[] rootMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla", "leaves"];
         public Validation(string type)
         {
             this.type = type;
@@ -36,23 +41,27 @@ namespace RumbleTrees
             string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
             string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
 
-            if (Regex.IsMatch(Input, rgbPattern))
+            if (Input.ToLower() == "random") return true;
+            if (Input.ToLower() == "vanilla") return true;
+
+            if (type == "rootMat")
             {
-                return !type.EndsWith("Mat");
+                return rootMats.Contains(Input.ToLower());
             }
-            else if (Regex.IsMatch(Input, hexPattern))
+            else if (type == "leafMat")
             {
-                return !type.EndsWith("Mat");
+                return leafMats.Contains(Input.ToLower());
+            }
+
+            if (Regex.IsMatch(Input, rgbPattern) || Regex.IsMatch(Input, hexPattern))
+            {
+                return true;
             }
             else
             {
                 Input = Input.ToLower();
-                if (Input == "vanilla") return true;
-                if (Input == "rainbow" && !type.EndsWith("Mat")) return true;
-                if (stones.Contains(Input) && type.EndsWith("Mat")) return true;
+                if (Input == "rainbow") return true;
                 if (themes.Contains(Input) && type == "leaf") return true;
-                if (Input == "leaves" && type == "rootMat") return true;
-                if (Input == "roots" && type == "leafMat") return true;
                 return false;
             }
         }
@@ -66,6 +75,8 @@ namespace RumbleTrees
         private bool wasLightmapChanged = false;
         private AssetBundle assetBundle = null;
         private Mod RumbleTrees = new Mod();
+
+        Random rand = new();
 
         // Property IDs
         private int LCT1;
@@ -237,7 +248,7 @@ namespace RumbleTrees
             RumbleTrees.ModName = BuildInfo.Name;
             RumbleTrees.ModVersion = BuildInfo.Version;
             RumbleTrees.SetFolder(BuildInfo.Name);
-            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)", new Tags { IsSummary = true });
+            RumbleTrees.AddDescription("Description", "", "Make them pretty!\n\nCurrent presets:\nCherry\nOrange\nYellow\nRed\nRainbow\nVanilla (literally does nothing)\nRandom", new Tags { IsSummary = true });
 
             RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables the mod in the gym", new Tags());
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables the mod on the ring map", new Tags());
@@ -246,7 +257,7 @@ namespace RumbleTrees
             RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring, the Gym, and Parks, which look different and may not work properly with all leaf colours", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" a shiftstone, or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
             RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"vanilla,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
 
@@ -278,7 +289,7 @@ namespace RumbleTrees
 
             UI.instance.UI_Initialized += OnUIInit;
 
-            assetBundle = Calls.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.rumbletrees", "rumbletrees");
+            assetBundle = Calls.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.rumbletrees");
 
             // The property IDs aren't always the same for some reason, so we get them again every time
             LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
@@ -456,6 +467,9 @@ namespace RumbleTrees
                 case "red":
                     selectedLeafColour = redColour;
                     return;
+                case "random":
+                    selectedLeafColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
+                    return;
             }
 
             selectedLeafColour = stringToColour(colour.ToLower());
@@ -493,6 +507,10 @@ namespace RumbleTrees
                 float g = ((hex >> 8) & 0xFF) / 255f;
                 float b = (hex & 0xFF) / 255f;
                 return new Color(r, g, b);
+            }
+            else if (colour.ToLower() == "random")
+            {
+                return new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             }
             else
             {
@@ -608,6 +626,8 @@ namespace RumbleTrees
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
             selectedLeafMaterial = ((string) RumbleTrees.Settings[8].SavedValue).ToLower();
+            if (strSelectedLeafColour == "random") selectedLeafColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
+            if (strSelectedRootColour == "random") selectedRootColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
@@ -668,8 +688,8 @@ namespace RumbleTrees
                         originalLeafColours[1] = material.GetColor(LCB1);
                     }
 
-                    // If the material is different we need to use the correct property
-                    if (selectedLeafMaterial == "roots")
+                    // If the material is different we need to use the correct property (but there's no roots on pit)
+                    if (selectedLeafMaterial == "roots" && currentScene != "Pit")
                     {
                         material.SetColor(RC1, shades[1]);
                         material.SetColor(RC2, shades[0]);
@@ -781,7 +801,7 @@ namespace RumbleTrees
                         MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
                         Material material = renderer.material;
 
-                        if (selectedLeafMaterial == "roots")
+                        if (selectedLeafMaterial == "roots" && (bool)RumbleTrees.Settings[sceneID].Value)
                         {
                             material.SetColor(RC1, originalLeafColours[0]);
                             material.SetColor(RC2, originalLeafColours[1]);
@@ -838,7 +858,7 @@ namespace RumbleTrees
                         MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
                         Material material = renderer.material;
 
-                        if (selectedRootMaterial == "leaves")
+                        if (selectedRootMaterial == "leaves" && (bool)RumbleTrees.Settings[sceneID].Value)
                         {
                             material.SetColor(LCT1, originalRootColours[0]);
                             material.SetColor(LCB1, originalRootColours[1]);
@@ -859,6 +879,7 @@ namespace RumbleTrees
             if (!enabled) yield break;
             if (leafObjects.Count != 0)
             {
+                if (materialName == "random" && enabled) materialName = Validation.leafMats[rand.Next(Validation.leafMats.Length)];
                 yield return new WaitForFixedUpdate(); // The entire reason this is a coroutine. Resetting doesn't work properly otherwise for some reason
                 foreach (GameObject leafObject in leafObjects)
                 {
@@ -871,11 +892,17 @@ namespace RumbleTrees
 
                     if (materialName == "roots")
                     {
+                        if (currentScene == "Pit") yield break;
                         if (originalRootMaterial == null)
                         {
-                            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().material; // Not for resetting pruposes, but so we can just use this variable no matter when the coroutine is run
+                            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().material; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
                         }
                         renderer.material = originalRootMaterial;
+                        UpdateLeafColour(selectedLeafColour);
+                    }
+                    else if (materialName == "vanilla")
+                    {
+                        ResetLeafMaterial();
                         UpdateLeafColour(selectedLeafColour);
                     }
                     else
@@ -894,6 +921,8 @@ namespace RumbleTrees
             if (!enabled) yield break;
             if (rootObjects.Count != 0)
             {
+                if (materialName == "random") materialName = Validation.rootMats[rand.Next(Validation.rootMats.Length)];
+
                 yield return new WaitForFixedUpdate();
                 foreach (GameObject rootObject in rootObjects)
                 {
@@ -911,6 +940,11 @@ namespace RumbleTrees
                             originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().material;
                         }
                         renderer.material = originalLeafMaterial;
+                        UpdateRootColour(selectedRootColour);
+                    }
+                    else if (materialName == "vanilla")
+                    {
+                        ResetRootMaterial();
                         UpdateRootColour(selectedRootColour);
                     }
                     else renderer.material = stringToStone(materialName);
