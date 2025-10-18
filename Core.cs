@@ -17,7 +17,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.2.0";
+        public const string Version = "2.2.1";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
@@ -468,7 +468,6 @@ namespace RumbleTrees
                     selectedLeafColour = redColour;
                     return;
                 case "random":
-                    selectedLeafColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
                     return;
             }
 
@@ -478,7 +477,7 @@ namespace RumbleTrees
         // This is actually really unnecessary
         private void setSelectedRootColour(string colour)
         {
-            selectedRootColour = stringToColour(colour);
+            if (colour != "random") selectedRootColour = stringToColour(colour);
         }
 
         // You'll never guess what this one does
@@ -507,10 +506,6 @@ namespace RumbleTrees
                 float g = ((hex >> 8) & 0xFF) / 255f;
                 float b = (hex & 0xFF) / 255f;
                 return new Color(r, g, b);
-            }
-            else if (colour.ToLower() == "random")
-            {
-                return new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             }
             else
             {
@@ -626,8 +621,6 @@ namespace RumbleTrees
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
             selectedLeafMaterial = ((string) RumbleTrees.Settings[8].SavedValue).ToLower();
-            if (strSelectedLeafColour == "random") selectedLeafColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
-            if (strSelectedRootColour == "random") selectedRootColour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
@@ -664,6 +657,8 @@ namespace RumbleTrees
         private void UpdateLeafColour(Color colour)
         {
             if (!enabled) return;
+
+            if (strSelectedLeafColour == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             if (leafObjects.Count != 0) // This shouldn't be false but better safe than sorry
             {
                 Color[] shades = new Color[2];
@@ -744,6 +739,8 @@ namespace RumbleTrees
         private void UpdateRootColour(Color colour)
         {
             if (currentScene == "Loader" || currentScene == "Pit" || !enabled) return;
+
+            if (strSelectedRootColour == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             if (rootObjects.Count != 0)
             {
                 Color.RGBToHSV(colour, out float hue, out float sat, out float val);
@@ -879,23 +876,23 @@ namespace RumbleTrees
             if (!enabled) yield break;
             if (leafObjects.Count != 0)
             {
+                if (originalLeafMaterial == null)
+                {
+                    originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().sharedMaterial;
+                }
+                yield return null;
                 if (materialName == "random" && enabled) materialName = Validation.leafMats[rand.Next(Validation.leafMats.Length)];
-                yield return new WaitForFixedUpdate(); // The entire reason this is a coroutine. Resetting doesn't work properly otherwise for some reason
+                //yield return null; // The entire reason this is a coroutine. Resetting doesn't work properly otherwise for some reason
                 foreach (GameObject leafObject in leafObjects)
                 {
                     MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
-
-                    if (originalLeafMaterial == null)
-                    {
-                        originalLeafMaterial = renderer.material;
-                    }
 
                     if (materialName == "roots")
                     {
                         if (currentScene == "Pit") yield break;
                         if (originalRootMaterial == null)
                         {
-                            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().material; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
+                            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
                         }
                         renderer.material = originalRootMaterial;
                         UpdateLeafColour(selectedLeafColour);
@@ -921,23 +918,22 @@ namespace RumbleTrees
             if (!enabled) yield break;
             if (rootObjects.Count != 0)
             {
+                if (originalRootMaterial == null)
+                {
+                    originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
+                }
+                yield return null;
                 if (materialName == "random") materialName = Validation.rootMats[rand.Next(Validation.rootMats.Length)];
 
-                yield return new WaitForFixedUpdate();
                 foreach (GameObject rootObject in rootObjects)
                 {
                     MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
-
-                    if (originalRootMaterial == null)
-                    {
-                        originalRootMaterial = renderer.material;
-                    }
 
                     if (materialName == "leaves")
                     {
                         if (originalLeafMaterial == null)
                         {
-                            originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().material;
+                            originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().sharedMaterial;
                         }
                         renderer.material = originalLeafMaterial;
                         UpdateRootColour(selectedRootColour);
