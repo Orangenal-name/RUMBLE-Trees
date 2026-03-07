@@ -74,12 +74,12 @@ namespace RumbleTrees
         Random rand = new();
 
         private List<GameObject> leafObjects = new List<GameObject>();
-        private List<GameObject> frootObjects = new List<GameObject>();
+        //private List<GameObject> frootObjects = new List<GameObject>();
         private GameObject VFXsObject = null;
         private Color originalLeafColour = new Color();
-        private Color[] originalRootColours = new Color[2];
+        //private Color[] originalRootColours = new Color[2];
         private Material originalLeafMaterial = null;
-        private Material originalRootMaterial = null;
+        //private Material originalRootMaterial = null;
         private Il2CppStructArray<GradientColorKey> originalVFXColours = null;
 
         private string selectedLeafMaterial = "vanilla";
@@ -447,12 +447,12 @@ namespace RumbleTrees
         {
             // Reset all the variables
             leafObjects = new List<GameObject>();
-            frootObjects = new List<GameObject>();
+            //frootObjects = new List<GameObject>();
             VFXsObject = null;
             originalLeafColour = new Color();
-            originalRootColours = new Color[2];
+            //originalRootColours = new Color[2];
             originalLeafMaterial = null;
-            originalRootMaterial = null;
+            //originalRootMaterial = null;
             originalVFXColours = null;
 
             // Stop the rainbows to avoid errors and epilepsy
