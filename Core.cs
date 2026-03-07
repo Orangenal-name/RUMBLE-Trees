@@ -6,13 +6,9 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.VFX;
-using RumbleModdingAPI;
 using BuildInfo = RumbleTrees.BuildInfo;
 using Random = System.Random;
 using RumbleModdingAPI.RMAPI;
-using Il2CppRUMBLE.Managers;
-using Il2CppRUMBLE.Pools;
-using Harmony;
 
 [assembly: MelonInfo(typeof(RumbleTrees.Core), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
