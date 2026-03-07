@@ -9,6 +9,10 @@ using UnityEngine.VFX;
 using RumbleModdingAPI;
 using BuildInfo = RumbleTrees.BuildInfo;
 using Random = System.Random;
+using RumbleModdingAPI.RMAPI;
+using Il2CppRUMBLE.Managers;
+using Il2CppRUMBLE.Pools;
+using Harmony;
 
 [assembly: MelonInfo(typeof(RumbleTrees.Core), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -17,7 +21,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.2.1";
+        public const string Version = "2.3.0";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
@@ -72,23 +76,16 @@ namespace RumbleTrees
         private string currentScene = "Loader";
         private int sceneID = -1;
         private bool enabled = true;
-        private bool wasLightmapChanged = false;
-        private AssetBundle assetBundle = null;
         private Mod RumbleTrees = new Mod();
+
+        private AssetBundle assetBundle;
 
         Random rand = new();
 
-        // Property IDs
-        private int LCT1;
-        private int LCB1;
-        private int FLG;
-        private int RC1;
-        private int RC2;
-
         private List<GameObject> leafObjects = new List<GameObject>();
-        private List<GameObject> rootObjects = new List<GameObject>();
+        private List<GameObject> frootObjects = new List<GameObject>();
         private GameObject VFXsObject = null;
-        private Color[] originalLeafColours = new Color[2];
+        private Color originalLeafColour = new Color();
         private Color[] originalRootColours = new Color[2];
         private Material originalLeafMaterial = null;
         private Material originalRootMaterial = null;
@@ -100,34 +97,18 @@ namespace RumbleTrees
         private string strSelectedLeafColour = "Cherry";
         private Color selectedRootColour = Color.white;
         private string strSelectedRootColour = "FFFFFF";
-        private bool vanillaLightmaps = false;
         private object rainbowLeafCoroutine = null;
         private object rainbowRootCoroutine = null;
 
         // Tree object locations
         private string[] GymTrees = [
-            "--------------SCENE--------------/Gym_Production/Main static group/Foliage/",
-            "--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__23_",
-            "--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Leave_sphere__24_",
-            "--------------SCENE--------------/Gym_Production/Sub static group/Scene_roots/Test_root_1_middetail",
-            "--------------SCENE--------------/Gym_Production/Sub static group(buildings)/Rumble_station/Root",
-            "--------------SCENE--------------/Gym_Production/Sub static group(buildings)/School/Cylinder_011",
-            "--------------SCENE--------------/Gym_Production/Sub static group(buildings)/School/Cylinder_003",
-            "--------------SCENE--------------/Gym_Production/Main static group/Gymarena/Cylinder_015__4_",
-            "--------------SCENE--------------/Lighting and effects/Visual Effects/Falling Leaf VFXs"
+            "SCENE/GYMMoss"
         ];
         private string[] RingTrees = [
-            "Map0_production/Main static group/leave",
-            "Map0_production/Main static group/Root"
-        ];
-        private string[] PitTrees = [
-            "Map1_production/Main static group/Leaves_Map2",
-            "Lighting & Effects/Visual Effects/Falling Leaf VFXs"
+            "Scene/Map0Leaves",
         ];
         private string[] ParkTrees = [
-            "________________SCENE_________________/Park/Main static group/Leaves/",
-            "________________SCENE_________________/Park/Main static group/Root/",
-            "Lighting and effects/Visual Effects/Falling Leaf VFXs"
+            "SCENE/PARKMos",
         ];
 
         // Presets
@@ -135,56 +116,6 @@ namespace RumbleTrees
         private Color orangeColour = new Color(1.0f, 0.44f, 0.0f, 1f);
         private Color yellowColour = new Color(1.0f, 0.78f, 0.0f, 1f);
         private Color redColour = new Color(0.66f, 0.0f, 0.0f, 1f);
-
-        // Dynamic in case I want to load other things in future
-        private dynamic LoadAsset<T>(string assetName, AssetBundle assetBundle)
-        {
-            if (assetBundle == null)
-            {
-                MelonLogger.Error("AssetBundle cannot be null!");
-                return null;
-            }
-
-            else if (assetName == null || assetName == "")
-            {
-                MelonLogger.Error("No asset name provided!");
-                return null;
-            }
-
-            if (typeof(T) == typeof(Texture2D))
-            {
-                Texture2D asset;
-                if (assetName == "Gym_Lightmap")
-                {
-                    asset = assetBundle.LoadAsset<Texture2D>("GYM0_final");
-                }
-                else if (assetName == "Ring_Lightmap")
-                {
-                    asset = assetBundle.LoadAsset<Texture2D>("MAP0_final");
-                }
-                else if (assetName == "Park_Lightmap")
-                {
-                    asset = assetBundle.LoadAsset<Texture2D>("park0_final");
-                }
-                else
-                {
-                    MelonLogger.Error($"No texture found with the name: {assetName}");
-                    return null;
-                }
-
-                if (asset == null)
-                    MelonLogger.Error("Failed to load texture from AssetBundle!");
-                else
-                    asset.Apply(true, false); // Make sure it's marked readable
-
-                return asset;
-            }
-            else
-            {
-                MelonLogger.Error("No valid type provided!");
-                return null;
-            }
-        }
 
         // Takes a shiftstone as a string and return the material of that stone
         public static Material stringToStone(string stoneName)
@@ -252,9 +183,7 @@ namespace RumbleTrees
 
             RumbleTrees.AddToList("Enabled in Gym", true, 0, "Enables the mod in the gym", new Tags());
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables the mod on the ring map", new Tags());
-            RumbleTrees.AddToList("Enabled on Pit", true, 0, "Enables the mod on the pit map", new Tags());
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables the mod in parks", new Tags());
-            RumbleTrees.AddToList("Legacy shaders", false, 0, "Enables the vanilla lightmaps in Ring, the Gym, and Parks, which look different and may not work properly with all leaf colours", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
@@ -271,32 +200,24 @@ namespace RumbleTrees
             RumbleTrees.GetFromFile();
 
             // Assign settings to their respective variables
-            vanillaLightmaps = (bool)RumbleTrees.Settings[5].Value;
-            strSelectedLeafColour = ((string)RumbleTrees.Settings[6].Value).ToLower();
-            strSelectedRootColour = ((string)RumbleTrees.Settings[7].Value).ToLower();
-            selectedLeafMaterial = ((string)RumbleTrees.Settings[8].Value).ToLower();
-            selectedRootMaterial = ((string)RumbleTrees.Settings[9].Value).ToLower();
+            strSelectedLeafColour = ((string)RumbleTrees.Settings[4].Value).ToLower();
+            strSelectedRootColour = ((string)RumbleTrees.Settings[5].Value).ToLower();
+            selectedLeafMaterial = ((string)RumbleTrees.Settings[6].Value).ToLower();
+            selectedRootMaterial = ((string)RumbleTrees.Settings[7].Value).ToLower();
 
             if (strSelectedLeafColour != "vanilla" && strSelectedLeafColour != "rainbow") setSelectedLeafColour(strSelectedLeafColour);
             if (strSelectedRootColour != "vanilla" && strSelectedRootColour != "rainbow") setSelectedRootColour(strSelectedRootColour);
 
             RumbleTrees.ModSaved += OnSave;
-            RumbleTrees.Settings[6].SavedValueChanged += OnLeafColourChange;
-            RumbleTrees.Settings[7].SavedValueChanged += OnRootColourChange;
+            RumbleTrees.Settings[4].SavedValueChanged += OnLeafColourChange;
+            RumbleTrees.Settings[5].SavedValueChanged += OnRootColourChange;
 
-            RumbleTrees.Settings[8].SavedValueChanged += OnLeafMaterialChange;
-            RumbleTrees.Settings[9].SavedValueChanged += OnRootMaterialChange;
+            RumbleTrees.Settings[6].SavedValueChanged += OnLeafMaterialChange;
+            RumbleTrees.Settings[7].SavedValueChanged += OnRootMaterialChange;
 
             UI.instance.UI_Initialized += OnUIInit;
 
-            assetBundle = Calls.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.rumbletrees");
-
-            // The property IDs aren't always the same for some reason, so we get them again every time
-            LCT1 = Shader.PropertyToID("Color_133d236fee76457eb89bac53e692f8a3"); // Found in sharedassets3 path ID 2 (Material Root leave_Map0)
-            LCB1 = Shader.PropertyToID("Color_6f942b46fda341409751e4e7f292de58"); // Ditto
-            FLG = Shader.PropertyToID("Leaf Color Gradient"); // Found in sharedassets0 path ID 371 (VisualEffectAsset Falling leaves)
-            RC1 = Shader.PropertyToID("Color_FA790384"); // Found in Material Rumble root
-            RC2 = Shader.PropertyToID("Color_c7120f3b741f4dd48575e89d95f9641d"); // Ditto
+            assetBundle = AssetBundles.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.fruity");
 
             LoggerInstance.Msg("Initialised.");
         }
@@ -309,9 +230,9 @@ namespace RumbleTrees
                 if (enabled)
                 {
                     if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
-                    if (strSelectedRootColour != "vanilla") UpdateRootColour(selectedRootColour);
+                    //if (strSelectedRootColour != "vanilla") UpdateRootColour(selectedRootColour);
                     if (selectedLeafMaterial != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(selectedLeafMaterial));
-                    if (selectedRootMaterial != "vanilla") MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
+                    //if (selectedRootMaterial != "vanilla") MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
 
                     if (strSelectedLeafColour == "rainbow")
                     {
@@ -320,31 +241,17 @@ namespace RumbleTrees
 
                     if (strSelectedRootColour == "rainbow")
                     {
-                        rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
+                        //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
                     }
 
-                    InitLightmaps();
+                    //InitLightmaps();
                 }
                 else
                 {
                     ResetLeafColour();
-                    ResetRootColour();
+                    //ResetRootColour();
                     ResetLeafMaterial();
-                    ResetRootMaterial();
-                }
-            }
-
-            // If the lightmaps should be enabled / disabled, do that
-            if ((bool)RumbleTrees.Settings[5].Value != vanillaLightmaps)
-            {
-                vanillaLightmaps = !vanillaLightmaps;
-                if (leafObjects.Count != 0)
-                {
-                    foreach (GameObject leafObject in leafObjects)
-                    {
-                        MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
-                        MelonCoroutines.Start(SwapLightmap(renderer, currentScene, vanillaLightmaps));
-                    }
+                    //ResetRootMaterial();
                 }
             }
         }
@@ -356,7 +263,7 @@ namespace RumbleTrees
             {
                 if (strSelectedLeafColour == "vanilla")
                 {
-                    InitLightmaps();
+                    //InitLightmaps();
                 }
                 
                 ValueChange<string> valueChange = (ValueChange<string>) e;
@@ -418,17 +325,17 @@ namespace RumbleTrees
 
                 if (strSelectedRootColour == "vanilla")
                 {
-                    ResetRootColour();
+                    //ResetRootColour();
                     return;
                 }
                 else if (strSelectedRootColour == "rainbow")
                 {
-                    rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
+                    //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
                     return;
                 }
 
                 setSelectedRootColour(strSelectedRootColour);
-                UpdateRootColour(selectedRootColour);
+                //UpdateRootColour(selectedRootColour);
             }
         }
 
@@ -442,11 +349,11 @@ namespace RumbleTrees
 
                 if (selectedRootMaterial == "vanilla")
                 {
-                    ResetRootMaterial();
+                    //ResetRootMaterial();
                     return;
                 }
 
-                MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
+                //MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
             }
         }
 
@@ -483,6 +390,8 @@ namespace RumbleTrees
         // You'll never guess what this one does
         public Color stringToColour(string colour)
         {
+            colour = colour.Replace("#", "");
+            colour = colour.Replace("0x", "");
             if (colour.Contains(" "))
             {
                 string[] parts = colour.Split(' ');
@@ -509,7 +418,7 @@ namespace RumbleTrees
             }
             else
             {
-                MelonLogger.Error("Somehow not a valid colour");
+                MelonLogger.Error($"\"{colour}\" is somehow not a valid colour");
                 throw new Exception("Provided string is not in a valid format.");
             }
         }
@@ -523,10 +432,9 @@ namespace RumbleTrees
         {
             // Reset all the variables
             leafObjects = new List<GameObject>();
-            rootObjects = new List<GameObject>();
+            frootObjects = new List<GameObject>();
             VFXsObject = null;
-            wasLightmapChanged = false;
-            originalLeafColours = new Color[2];
+            originalLeafColour = new Color();
             originalRootColours = new Color[2];
             originalLeafMaterial = null;
             originalRootMaterial = null;
@@ -549,29 +457,19 @@ namespace RumbleTrees
             {
                 sceneID = 1;
                 currentScene = sceneName;
-                GameObject foliage = GameObject.Find(GymTrees[0]);
-                for (int i = 0; i < foliage.transform.childCount; i++)
-                {
-                    GameObject child = foliage.transform.GetChild(i).gameObject;
-                    if (child.active) leafObjects.Add(child);
-                }
-                leafObjects.Add(GameObject.Find(GymTrees[1]));
-                leafObjects.Add(GameObject.Find(GymTrees[2]));
-                VFXsObject = GameObject.Find(GymTrees[8]);
+                leafObjects.Add(GameObject.Find(GymTrees[0]));
 
-                GameObject roots = GameObject.Find(GymTrees[3]);
-                for (int i = 0; i < roots.transform.childCount; i++)
+                VFXsObject = GameObjects.Gym.SCENEVFXSFX.VisualEffects.FallingLeafVFXs.GetGameObject();
+
+                // Fruit pool sounds tasty... and sticky...
+                Il2CppSystem.Collections.Generic.List<PooledMonoBehaviour> fruitPool = PoolManager.Instance.GetPool("Fruit").PooledObjects;
+
+                foreach (PooledMonoBehaviour fruit in fruitPool)
                 {
-                    GameObject child = roots.transform.GetChild(i).gameObject;
-                    if (child.name != "GymCompRoot") // Because for SOME REASON there is a random empty gameobject here
-                        rootObjects.Add(child);
+                    frootObjects.Add(fruit.gameObject);
                 }
 
-                for (int i = 4; i < 8; i++)
-                {
-                    GameObject rootObject = GameObject.Find(GymTrees[i]);
-                    rootObjects.Add(rootObject);
-                }
+                MelonCoroutines.Start(FRUIT_TIME());
             }
 
             if (sceneName == "Map0")
@@ -580,37 +478,16 @@ namespace RumbleTrees
                 currentScene = "Ring";
                 GameObject leaves = GameObject.Find(RingTrees[0]);
                 leafObjects.Add(leaves);
-                GameObject roots = GameObject.Find(RingTrees[1]);
-                rootObjects.Add(roots);
-            }
-
-            if (sceneName == "Map1")
-            {
-                sceneID = 3;
-                currentScene = "Pit";
-                GameObject leaves = GameObject.Find(PitTrees[0]);
-                leafObjects.Add(leaves);
-                VFXsObject = GameObject.Find(PitTrees[1]);
             }
 
             if (sceneName == "Park")
             {
-                sceneID = 4;
+                sceneID = 3;
                 currentScene = "Park";
                 GameObject leaves = GameObject.Find(ParkTrees[0]);
-                for (int i = 0; i < leaves.transform.childCount; i++)
-                {
-                    GameObject child = leaves.transform.GetChild(i).gameObject;
-                    leafObjects.Add(child);
-                }
-                VFXsObject = GameObject.Find(ParkTrees[2]);
+                leafObjects.Add(leaves);
 
-                GameObject roots = GameObject.Find(ParkTrees[1]);
-                for (int i = 0; i < roots.transform.childCount; i++)
-                {
-                    GameObject child = roots.transform.GetChild(i).gameObject;
-                    rootObjects.Add(child);
-                }
+                VFXsObject = GameObjects.Park.SCENEVFXSFX.VisualEffects.FallingLeafVFXs.GetGameObject();
             }
 
             if (sceneName == "Loader")
@@ -620,27 +497,27 @@ namespace RumbleTrees
 
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
-            selectedLeafMaterial = ((string) RumbleTrees.Settings[8].SavedValue).ToLower();
+            selectedLeafMaterial = ((string) RumbleTrees.Settings[6].SavedValue).ToLower();
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
-                if (strSelectedRootColour != "vanilla") UpdateRootColour(selectedRootColour);
+                //if (strSelectedRootColour != "vanilla") UpdateRootColour(selectedRootColour);
                 if (selectedLeafMaterial != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(selectedLeafMaterial));
-                if (selectedRootMaterial != "vanilla") MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
-                if (strSelectedLeafColour != "vanilla") InitLightmaps();
+                //if (selectedRootMaterial != "vanilla") MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
+                //if (strSelectedLeafColour != "vanilla") InitLightmaps();
             }
             if (strSelectedLeafColour == "rainbow" && rainbowLeafCoroutine == null)
             {
                 rainbowLeafCoroutine = MelonCoroutines.Start(RAINBOWLEAVES());
             }
-            if (strSelectedRootColour == "rainbow" && rainbowRootCoroutine == null)
-            {
-                rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
-            }
+            //if (strSelectedRootColour == "rainbow" && rainbowRootCoroutine == null)
+            //{
+            //    rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
+            //}
         }
 
         // Updates all the lightmaps in one neat function
-        private void InitLightmaps()
+        /*private void InitLightmaps()
         {
             if (currentScene != "Loader" && currentScene != "Pit")
             {
@@ -651,6 +528,42 @@ namespace RumbleTrees
                     if (!vanillaLightmaps) MelonCoroutines.Start(SwapLightmap(renderer, currentScene));
                 }
             }
+        }*/
+
+        private IEnumerator FRUIT_TIME()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                yield return null;
+            }
+
+            Shader shader = assetBundle.LoadAsset<Shader>("FRUIT");
+            Material newMat = assetBundle.LoadAsset<Material>("New Material 1");
+            newMat.shader = shader;
+
+            Material mat = frootObjects[0].GetComponent<MeshRenderer>().material;
+            Shader shader1 = mat.shader;
+
+            int count = shader1.GetPropertyCount();
+            for (int i = 0; i < count; i++)
+            {
+                if (shader1.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture)
+                {
+                    string name = shader1.GetPropertyName(i);
+                    Debug.Log("Texture property: " + name + " -> " + mat.GetTexture(name));
+                }
+            }
+
+            foreach (GameObject fruit in frootObjects)
+            {
+                MeshRenderer renderer = fruit.GetComponent<MeshRenderer>();
+                Material[] materials = renderer.materials;
+                Array.Resize(ref materials, materials.Length + 1); // HOLY SHIT I HATE ARRAYS
+                materials[materials.Length - 1] = newMat;
+                renderer.materials = materials;
+                //renderer.material.shader = shader;
+            }
+            yield break;
         }
 
         // I'm not gonna comment on these functions cause it should be obvious from the name
@@ -661,15 +574,6 @@ namespace RumbleTrees
             if (strSelectedLeafColour == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
             if (leafObjects.Count != 0) // This shouldn't be false but better safe than sorry
             {
-                Color[] shades = new Color[2];
-                Color.RGBToHSV(colour, out float hue, out float sat, out float val);
-
-                sat = Math.Clamp(sat, 0.1f, 0.9f);
-                val = Math.Clamp(val, 0.1f, 0.9f);
-
-                // Generate new colours from the colour in order to make the bottom darker and the top lighter
-                shades[0] = Color.HSVToRGB(hue, sat, val - 0.2f);
-                shades[1] = Color.HSVToRGB(hue, sat, val + 0.1f);
 
                 foreach (GameObject leafObject in leafObjects)
                 {
@@ -677,22 +581,20 @@ namespace RumbleTrees
                     Material material = renderer.material;
 
                     // Can't reset it later without saving it
-                    if (originalLeafColours[0] == default)
+                    if (originalLeafColour == default)
                     {
-                        originalLeafColours[0] = material.GetColor(LCT1);
-                        originalLeafColours[1] = material.GetColor(LCB1);
+                        originalLeafColour = material.GetColor("_Main_color");
                     }
 
                     // If the material is different we need to use the correct property (but there's no roots on pit)
                     if (selectedLeafMaterial == "roots" && currentScene != "Pit")
                     {
-                        material.SetColor(RC1, shades[1]);
-                        material.SetColor(RC2, shades[0]);
+                        //material.SetColor(RC1, shades[1]);
+                        //material.SetColor(RC2, shades[0]);
                     }
                     else
                     {
-                        material.SetColor(LCT1, shades[1]);
-                        material.SetColor(LCB1, shades[0]);
+                        material.SetColor("_Main_color", colour);
                     }
                 }
 
@@ -714,7 +616,7 @@ namespace RumbleTrees
                 {
                     leafVFX = VFXsObject.transform.GetChild(i).gameObject.GetComponent<VisualEffect>();
                     GradientColorKey[] keys = new GradientColorKey[2]; // Why is it two colours there's literally no gradient
-                    Gradient gradient = leafVFX.GetGradient(FLG);
+                    Gradient gradient = leafVFX.GetGradient("Leaf Color Gradient");
 
                     if (originalVFXColours == null)
                     {
@@ -726,7 +628,7 @@ namespace RumbleTrees
 
                     gradient.colorKeys = keys;
 
-                    leafVFX.SetGradient(FLG, gradient);
+                    leafVFX.SetGradient("Leaf Color Gradient", gradient);
                 }
             }
             else if (currentScene != "Ring") // There aren't VFXs on ring so we don't need a warning
@@ -736,50 +638,50 @@ namespace RumbleTrees
         }
 
         // This function is pretty much the same as UpdateLeafColour
-        private void UpdateRootColour(Color colour)
-        {
-            if (currentScene == "Loader" || currentScene == "Pit" || !enabled) return;
+        //private void UpdateRootColour(Color colour)
+        //{
+        //    if (currentScene == "Loader" || currentScene == "Pit" || !enabled) return;
 
-            if (strSelectedRootColour == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
-            if (rootObjects.Count != 0)
-            {
-                Color.RGBToHSV(colour, out float hue, out float sat, out float val);
-                Color[] shades = new Color[3];
+        //    if (strSelectedRootColour == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
+        //    if (rootObjects.Count != 0)
+        //    {
+        //        Color.RGBToHSV(colour, out float hue, out float sat, out float val);
+        //        Color[] shades = new Color[3];
 
-                sat = Math.Clamp(sat, 0.1f, 0.9f);
-                val = Math.Clamp(val, 0.1f, 0.9f);
+        //        sat = Math.Clamp(sat, 0.1f, 0.9f);
+        //        val = Math.Clamp(val, 0.1f, 0.9f);
 
-                shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
-                shades[1] = Color.HSVToRGB(hue, sat, val);
+        //        shades[0] = Color.HSVToRGB(hue, sat - 0.1f, val - 0.3f);
+        //        shades[1] = Color.HSVToRGB(hue, sat, val);
 
-                foreach (GameObject rootObject in rootObjects)
-                {
-                    MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
-                    Material material = renderer.material;
+        //        foreach (GameObject rootObject in rootObjects)
+        //        {
+        //            MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
+        //            Material material = renderer.material;
 
 
-                    if (material != null)
-                    {
-                        if (originalRootColours[0] == default)
-                        {
-                            originalRootColours[0] = material.GetColor(RC1);
-                            originalRootColours[1] = material.GetColor(RC2);
-                        }
+        //            if (material != null)
+        //            {
+        //                if (originalRootColours[0] == default)
+        //                {
+        //                    originalRootColours[0] = material.GetColor(RC1);
+        //                    originalRootColours[1] = material.GetColor(RC2);
+        //                }
 
-                        if (selectedRootMaterial == "leaves")
-                        {
-                            material.SetColor(LCT1, shades[0]);
-                            material.SetColor(LCB1, shades[1]);
-                        }
-                        else
-                        {
-                            material.SetColor(RC1, shades[0]);
-                            material.SetColor(RC2, shades[1]);
-                        }
-                    }
-                }
-            }
-        }
+        //                if (selectedRootMaterial == "leaves")
+        //                {
+        //                    material.SetColor(LCT1, shades[0]);
+        //                    material.SetColor(LCB1, shades[1]);
+        //                }
+        //                else
+        //                {
+        //                    material.SetColor(RC1, shades[0]);
+        //                    material.SetColor(RC2, shades[1]);
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
 
         private void ResetLeafColour()
         {
@@ -789,7 +691,7 @@ namespace RumbleTrees
                 rainbowLeafCoroutine = null;
             }
 
-            if (originalLeafColours[0] != default) // If the originalLeafColours aren't set then nothing was changed and we don't need to reset anything.
+            if (originalLeafColour != default) // If the originalLeafColours aren't set then nothing was changed and we don't need to reset anything.
             {
                 if (leafObjects.Count != 0)
                 {
@@ -800,16 +702,15 @@ namespace RumbleTrees
 
                         if (selectedLeafMaterial == "roots" && (bool)RumbleTrees.Settings[sceneID].Value)
                         {
-                            material.SetColor(RC1, originalLeafColours[0]);
-                            material.SetColor(RC2, originalLeafColours[1]);
+                            //material.SetColor(RC1, originalLeafColours[0]);
+                            //material.SetColor(RC2, originalLeafColours[1]);
                         }
                         else
                         {
-                            material.SetColor(LCT1, originalLeafColours[0]);
-                            material.SetColor(LCB1, originalLeafColours[1]);
+                            material.SetColor("_Main_color", originalLeafColour);
                         }
 
-                        MelonCoroutines.Start(SwapLightmap(renderer, currentScene, true));
+                        //MelonCoroutines.Start(SwapLightmap(renderer, currentScene, true));
                     }
                 }
             }
@@ -829,46 +730,46 @@ namespace RumbleTrees
                     for (int i = 0; i < VFXsObject.transform.GetChildCount(); i++)
                     {
                         leafVFX = VFXsObject.transform.GetChild(i).gameObject.GetComponent<VisualEffect>();
-                        Gradient gradient = leafVFX.GetGradient(FLG);
+                        Gradient gradient = leafVFX.GetGradient("Leaf Color Gradient");
 
                         gradient.colorKeys = originalVFXColours;
 
-                        leafVFX.SetGradient(FLG, gradient);
+                        leafVFX.SetGradient("Leaf Color Gradient", gradient);
                     }
                 }
             }
         }
 
-        private void ResetRootColour()
-        {
-            if (rainbowRootCoroutine != null)
-            {
-                MelonCoroutines.Stop(rainbowRootCoroutine);
-                rainbowRootCoroutine = null;
-            }
-            if (originalRootColours[0] != default)
-            {
-                if (rootObjects.Count != 0)
-                {
-                    foreach (GameObject rootObject in rootObjects)
-                    {
-                        MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
-                        Material material = renderer.material;
+        //private void ResetRootColour()
+        //{
+        //    if (rainbowRootCoroutine != null)
+        //    {
+        //        MelonCoroutines.Stop(rainbowRootCoroutine);
+        //        rainbowRootCoroutine = null;
+        //    }
+        //    if (originalRootColours[0] != default)
+        //    {
+        //        if (rootObjects.Count != 0)
+        //        {
+        //            foreach (GameObject rootObject in rootObjects)
+        //            {
+        //                MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
+        //                Material material = renderer.material;
 
-                        if (selectedRootMaterial == "leaves" && (bool)RumbleTrees.Settings[sceneID].Value)
-                        {
-                            material.SetColor(LCT1, originalRootColours[0]);
-                            material.SetColor(LCB1, originalRootColours[1]);
-                        }
-                        else
-                        {
-                            material.SetColor(RC1, originalRootColours[0]);
-                            material.SetColor(RC2, originalRootColours[1]);
-                        }
-                    }
-                }
-            }
-        }
+        //                if (selectedRootMaterial == "leaves" && (bool)RumbleTrees.Settings[sceneID].Value)
+        //                {
+        //                    material.SetColor(LCT1, originalRootColours[0]);
+        //                    material.SetColor(LCB1, originalRootColours[1]);
+        //                }
+        //                else
+        //                {
+        //                    material.SetColor(RC1, originalRootColours[0]);
+        //                    material.SetColor(RC2, originalRootColours[1]);
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
 
         private IEnumerator UpdateLeafMaterial(string materialName)
         {
@@ -881,6 +782,8 @@ namespace RumbleTrees
                     originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().sharedMaterial;
                 }
                 yield return null;
+                yield return null; // THREE FRAMES!?
+                yield return null;
                 if (materialName == "random" && enabled) materialName = Validation.leafMats[rand.Next(Validation.leafMats.Length)];
                 //yield return null; // The entire reason this is a coroutine. Resetting doesn't work properly otherwise for some reason
                 foreach (GameObject leafObject in leafObjects)
@@ -892,7 +795,7 @@ namespace RumbleTrees
                         if (currentScene == "Pit") yield break;
                         if (originalRootMaterial == null)
                         {
-                            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
+                            originalRootMaterial = frootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
                         }
                         renderer.material = originalRootMaterial;
                         UpdateLeafColour(selectedLeafColour);
@@ -912,41 +815,41 @@ namespace RumbleTrees
             yield break;
         }
 
-        IEnumerator UpdateRootMaterial(string materialName)
-        {
-            if (currentScene == "Loader") yield break;
-            if (!enabled) yield break;
-            if (rootObjects.Count != 0)
-            {
-                if (originalRootMaterial == null)
-                {
-                    originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
-                }
-                yield return null;
-                if (materialName == "random") materialName = Validation.rootMats[rand.Next(Validation.rootMats.Length)];
+        //IEnumerator UpdateRootMaterial(string materialName)
+        //{
+        //    if (currentScene == "Loader") yield break;
+        //    if (!enabled) yield break;
+        //    if (rootObjects.Count != 0)
+        //    {
+        //        if (originalRootMaterial == null)
+        //        {
+        //            originalRootMaterial = rootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
+        //        }
+        //        yield return null;
+        //        if (materialName == "random") materialName = Validation.rootMats[rand.Next(Validation.rootMats.Length)];
 
-                foreach (GameObject rootObject in rootObjects)
-                {
-                    MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
+        //        foreach (GameObject rootObject in rootObjects)
+        //        {
+        //            MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
 
-                    if (materialName == "leaves")
-                    {
-                        if (originalLeafMaterial == null)
-                        {
-                            originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().sharedMaterial;
-                        }
-                        renderer.material = originalLeafMaterial;
-                        UpdateRootColour(selectedRootColour);
-                    }
-                    else if (materialName == "vanilla")
-                    {
-                        ResetRootMaterial();
-                        UpdateRootColour(selectedRootColour);
-                    }
-                    else renderer.material = stringToStone(materialName);
-                }
-            }
-        }
+        //            if (materialName == "leaves")
+        //            {
+        //                if (originalLeafMaterial == null)
+        //                {
+        //                    originalLeafMaterial = leafObjects.First().GetComponent<MeshRenderer>().sharedMaterial;
+        //                }
+        //                renderer.material = originalLeafMaterial;
+        //                UpdateRootColour(selectedRootColour);
+        //            }
+        //            else if (materialName == "vanilla")
+        //            {
+        //                ResetRootMaterial();
+        //                UpdateRootColour(selectedRootColour);
+        //            }
+        //            else renderer.material = stringToStone(materialName);
+        //        }
+        //    }
+        //}
 
         private void ResetLeafMaterial()
         {
@@ -968,27 +871,27 @@ namespace RumbleTrees
             }
         }
 
-        private void ResetRootMaterial()
-        {
-            if (currentScene == "Loader") return;
-            if (originalRootMaterial == null) return;
-            if (rootObjects.Count != 0)
-            {
-                foreach (GameObject rootObject in rootObjects)
-                {
-                    MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
+        //private void ResetRootMaterial()
+        //{
+        //    if (currentScene == "Loader") return;
+        //    if (originalRootMaterial == null) return;
+        //    if (rootObjects.Count != 0)
+        //    {
+        //        foreach (GameObject rootObject in rootObjects)
+        //        {
+        //            MeshRenderer renderer = rootObject.GetComponent<MeshRenderer>();
 
-                    renderer.material = originalRootMaterial;
-                }
-                if (enabled && strSelectedRootColour != "vanilla")
-                {
-                    UpdateRootColour(selectedRootColour);
-                }
-                else ResetRootColour();
-            }
-        }
+        //            renderer.material = originalRootMaterial;
+        //        }
+        //        if (enabled && strSelectedRootColour != "vanilla")
+        //        {
+        //            UpdateRootColour(selectedRootColour);
+        //        }
+        //        else ResetRootColour();
+        //    }
+        //}
 
-        IEnumerator SwapLightmap(MeshRenderer renderer, string sceneName, bool original = false)
+        /*IEnumerator SwapLightmap(MeshRenderer renderer, string sceneName, bool original = false)
         {
             if (sceneName == "Pit") yield break;
             // Setting immediately on scene change doesn't change the lightmap index??
@@ -1037,7 +940,7 @@ namespace RumbleTrees
             {
                 renderer.lightmapIndex = 1;
             }
-        }
+        }*/
 
         IEnumerator RAINBOWLEAVES()
         {
@@ -1051,7 +954,7 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
-                    rainbowHue += (int)RumbleTrees.Settings[10].SavedValue;
+                    rainbowHue += (int)RumbleTrees.Settings[8].SavedValue;
                     FrameCounter = 0;
                 }
                 FrameCounter++;
@@ -1059,24 +962,24 @@ namespace RumbleTrees
             }
         }
 
-        IEnumerator RAINBOWROOTS()
-        {
-            WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
-            int FrameCounter = 0;
-            int rainbowHue = 0;
-            while (true)
-            {
-                if (FrameCounter >= 2)
-                {
-                    if (rainbowHue >= 360) rainbowHue = 0;
-                    selectedRootColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
-                    UpdateRootColour(selectedRootColour);
-                    rainbowHue += (int)RumbleTrees.Settings[10].SavedValue;
-                    FrameCounter = 0;
-                }
-                FrameCounter++;
-                yield return waitForFixedUpdate;
-            }
-        }
+        //IEnumerator RAINBOWROOTS()
+        //{
+        //    WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
+        //    int FrameCounter = 0;
+        //    int rainbowHue = 0;
+        //    while (true)
+        //    {
+        //        if (FrameCounter >= 2)
+        //        {
+        //            if (rainbowHue >= 360) rainbowHue = 0;
+        //            selectedRootColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
+        //            UpdateRootColour(selectedRootColour);
+        //            rainbowHue += (int)RumbleTrees.Settings[10].SavedValue;
+        //            FrameCounter = 0;
+        //        }
+        //        FrameCounter++;
+        //        yield return waitForFixedUpdate;
+        //    }
+        //}
     }
 }
