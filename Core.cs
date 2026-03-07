@@ -1,18 +1,19 @@
-﻿using Il2CppInterop.Runtime.InteropTypes.Arrays;
+﻿using Harmony;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppRUMBLE.Combat.ShiftStones;
+using Il2CppRUMBLE.Managers;
+using Il2CppRUMBLE.Pools;
 using MelonLoader;
+using RumbleModdingAPI;
+using RumbleModdingAPI.RMAPI;
 using RumbleModUI;
 using System.Collections;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.VFX;
-using RumbleModdingAPI;
+using static UnityEngine.UIElements.UIR.GradientSettingsAtlas;
 using BuildInfo = RumbleTrees.BuildInfo;
 using Random = System.Random;
-using RumbleModdingAPI.RMAPI;
-using Il2CppRUMBLE.Managers;
-using Il2CppRUMBLE.Pools;
-using Harmony;
 
 [assembly: MelonInfo(typeof(RumbleTrees.Core), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
 [assembly: MelonGame("Buckethead Entertainment", "RUMBLE")]
@@ -99,6 +100,9 @@ namespace RumbleTrees
         private string strSelectedRootColour = "FFFFFF";
         private object rainbowLeafCoroutine = null;
         private object rainbowRootCoroutine = null;
+
+        public Color newColor = Color.yellow; // The color to apply
+        public byte threshold = 0x80; // 128 in decimal
 
         // Tree object locations
         private string[] GymTrees = [
@@ -530,6 +534,36 @@ namespace RumbleTrees
             }
         }*/
 
+        Texture2D ConvertToTexture2D(Texture texture)
+        {
+            // Create a temporary RenderTexture
+            RenderTexture rt = RenderTexture.GetTemporary(
+                texture.width,
+                texture.height,
+                0,
+                RenderTextureFormat.Default,
+                RenderTextureReadWrite.Linear
+            );
+
+            // Copy texture to RenderTexture
+            Graphics.Blit(texture, rt);
+
+            // Backup the active RenderTexture
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = rt;
+
+            // Create a new Texture2D and read the RenderTexture into it
+            Texture2D tex2D = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false);
+            tex2D.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex2D.Apply();
+
+            // Restore the active RenderTexture
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(rt);
+
+            return tex2D;
+        }
+
         private IEnumerator FRUIT_TIME()
         {
             for (int i = 0; i < 5; i++)
@@ -537,31 +571,33 @@ namespace RumbleTrees
                 yield return null;
             }
 
-            Shader shader = assetBundle.LoadAsset<Shader>("FRUIT");
-            Material newMat = assetBundle.LoadAsset<Material>("New Material 1");
-            newMat.shader = shader;
-
-            Material mat = frootObjects[0].GetComponent<MeshRenderer>().material;
-            Shader shader1 = mat.shader;
-
-            int count = shader1.GetPropertyCount();
-            for (int i = 0; i < count; i++)
-            {
-                if (shader1.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture)
-                {
-                    string name = shader1.GetPropertyName(i);
-                    Debug.Log("Texture property: " + name + " -> " + mat.GetTexture(name));
-                }
-            }
-
             foreach (GameObject fruit in frootObjects)
             {
                 MeshRenderer renderer = fruit.GetComponent<MeshRenderer>();
-                Material[] materials = renderer.materials;
-                Array.Resize(ref materials, materials.Length + 1); // HOLY SHIT I HATE ARRAYS
-                materials[materials.Length - 1] = newMat;
-                renderer.materials = materials;
-                //renderer.material.shader = shader;
+
+                Texture2D texture = ConvertToTexture2D(renderer.material.GetTexture("_Albedo"));
+                Color32[] pixels = texture.GetPixels32();
+
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    Color32 p = pixels[i];
+
+                    if (p.r > threshold)
+                    {
+                        pixels[i] = newColor;
+                    }
+                }
+
+                // Apply the modified pixels
+                texture.SetPixels32(pixels);
+                texture.Apply();
+
+                // Assign the modified texture back (e.g., to a material)
+                if (renderer != null)
+                {
+                    renderer.material.SetTexture("_Albedo", texture);
+                }
+
             }
             yield break;
         }
