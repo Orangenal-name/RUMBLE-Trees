@@ -33,8 +33,7 @@ namespace RumbleTrees
         // TODO: make random colours work for roots as well
         private string[] themes = ["cherry", "orange", "yellow", "red"];
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
-        public static string[] leafMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla", "roots"];
-        public static string[] rootMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla", "leaves"];
+        public static string[] leafMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
         public Validation(string type)
         {
             this.type = type;
@@ -48,11 +47,7 @@ namespace RumbleTrees
             if (Input.ToLower() == "random") return true;
             if (Input.ToLower() == "vanilla") return true;
 
-            if (type == "rootMat")
-            {
-                return rootMats.Contains(Input.ToLower());
-            }
-            else if (type == "leafMat")
+            if (type == "leafMat")
             {
                 return leafMats.Contains(Input.ToLower());
             }
@@ -769,17 +764,7 @@ namespace RumbleTrees
                 {
                     MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
 
-                    if (materialName == "roots")
-                    {
-                        if (currentScene == "Pit") yield break;
-                        if (originalRootMaterial == null)
-                        {
-                            originalRootMaterial = frootObjects.First().GetComponent<MeshRenderer>().sharedMaterial; // Not for resetting purposes, but so we can just use this variable no matter when the coroutine is run
-                        }
-                        renderer.material = originalRootMaterial;
-                        UpdateLeafColour(selectedLeafColour);
-                    }
-                    else if (materialName == "vanilla")
+                    if (materialName == "vanilla")
                     {
                         ResetLeafMaterial();
                         UpdateLeafColour(selectedLeafColour);
