@@ -92,11 +92,11 @@ namespace RumbleTrees
         private Il2CppStructArray<GradientColorKey> originalVFXColours = null;
 
         private string selectedLeafMaterial = "vanilla";
-        private string selectedRootMaterial = "vanilla";
+        //private string selectedRootMaterial = "vanilla";
         private Color selectedLeafColour = default;
         private string strSelectedLeafColour = "Cherry";
-        private Color selectedRootColour = Color.white;
-        private string strSelectedRootColour = "FFFFFF";
+        //private Color selectedRootColour = Color.white;
+        //private string strSelectedRootColour = "FFFFFF";
         private object rainbowLeafCoroutine = null;
         private object rainbowRootCoroutine = null;
 
@@ -186,40 +186,63 @@ namespace RumbleTrees
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables the mod in parks", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            //RumbleTrees.AddToList("Root colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
-            RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
+            //RumbleTrees.AddToList("Root material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"leaves\" to set the material of the roots", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
+            RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
+
             RumbleTrees.AddValidation("Leaf colour", new Validation("leaf"));
-            RumbleTrees.AddValidation("Root colour", new Validation("root"));
+            //RumbleTrees.AddValidation("Root colour", new Validation("root"));
             RumbleTrees.AddValidation("Leaf material", new Validation("leafMat"));
-            RumbleTrees.AddValidation("Root material", new Validation("rootMat"));
+            //RumbleTrees.AddValidation("Root material", new Validation("rootMat"));
 
             RumbleTrees.GetFromFile();
 
             // Assign settings to their respective variables
             strSelectedLeafColour = ((string)RumbleTrees.Settings[4].Value).ToLower();
-            strSelectedRootColour = ((string)RumbleTrees.Settings[5].Value).ToLower();
-            selectedLeafMaterial = ((string)RumbleTrees.Settings[6].Value).ToLower();
-            selectedRootMaterial = ((string)RumbleTrees.Settings[7].Value).ToLower();
+            //strSelectedRootColour = ((string)RumbleTrees.Settings[5].Value).ToLower();
+            selectedLeafMaterial = ((string)RumbleTrees.Settings[5].Value).ToLower();
+            //selectedRootMaterial = ((string)RumbleTrees.Settings[7].Value).ToLower();
 
             if (strSelectedLeafColour != "vanilla" && strSelectedLeafColour != "rainbow") setSelectedLeafColour(strSelectedLeafColour);
-            if (strSelectedRootColour != "vanilla" && strSelectedRootColour != "rainbow") setSelectedRootColour(strSelectedRootColour);
+            //if (strSelectedRootColour != "vanilla" && strSelectedRootColour != "rainbow") setSelectedRootColour(strSelectedRootColour);
 
             RumbleTrees.ModSaved += OnSave;
             RumbleTrees.Settings[4].SavedValueChanged += OnLeafColourChange;
-            RumbleTrees.Settings[5].SavedValueChanged += OnRootColourChange;
+            //RumbleTrees.Settings[5].SavedValueChanged += OnRootColourChange;
 
-            RumbleTrees.Settings[6].SavedValueChanged += OnLeafMaterialChange;
-            RumbleTrees.Settings[7].SavedValueChanged += OnRootMaterialChange;
+            RumbleTrees.Settings[5].SavedValueChanged += OnLeafMaterialChange;
+            //RumbleTrees.Settings[7].SavedValueChanged += OnRootMaterialChange;
+
+            RumbleTrees.Settings[7].SavedValueChanged += OnToggleVFXs;
 
             UI.instance.UI_Initialized += OnUIInit;
 
-            assetBundle = AssetBundles.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.fruity");
+            //assetBundle = AssetBundles.LoadAssetBundleFromStream(this, "RumbleTrees.Resources.fruity");
 
             LoggerInstance.Msg("Initialised.");
+        }
+
+        private void OnToggleVFXs(object sender = null, EventArgs e = null)
+        {
+            ToggleVFXs(((ValueChange<bool>)e).Value);
+        }
+
+        private void ToggleVFXs(bool enable)
+        {
+            if (VFXsObject != null)
+            {
+                Transform parent = VFXsObject.transform.parent;
+
+                // I don't want to activate other stuff if the user doesn't want it and afaik there aren't any other mods that enable these so I'm not worried about compatibility
+                parent.GetChild(0).gameObject.active = false;
+                parent.GetChild(1).gameObject.active = false;
+
+                parent.gameObject.active = enable;
+            }
         }
 
         private void OnSave()
@@ -239,10 +262,10 @@ namespace RumbleTrees
                         rainbowLeafCoroutine = MelonCoroutines.Start(RAINBOWLEAVES());
                     }
 
-                    if (strSelectedRootColour == "rainbow")
-                    {
-                        //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
-                    }
+                    //if (strSelectedRootColour == "rainbow")
+                    //{
+                    //    //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
+                    //}
 
                     //InitLightmaps();
                 }
@@ -253,6 +276,7 @@ namespace RumbleTrees
                     ResetLeafMaterial();
                     //ResetRootMaterial();
                 }
+                ToggleVFXs(enabled);
             }
         }
 
@@ -310,52 +334,52 @@ namespace RumbleTrees
         }
 
         // Update roots on colour change
-        private void OnRootColourChange(object sender = null, EventArgs e = null)
-        {
-            if (e != null)
-            {
-                ValueChange<string> valueChange = (ValueChange<string>)e;
-                strSelectedRootColour = valueChange.Value.ToLower();
+        //private void OnRootColourChange(object sender = null, EventArgs e = null)
+        //{
+        //    if (e != null)
+        //    {
+        //        ValueChange<string> valueChange = (ValueChange<string>)e;
+        //        strSelectedRootColour = valueChange.Value.ToLower();
 
-                if (rainbowRootCoroutine != null)
-                {
-                    MelonCoroutines.Stop(rainbowRootCoroutine);
-                    rainbowRootCoroutine = null;
-                }
+        //        if (rainbowRootCoroutine != null)
+        //        {
+        //            MelonCoroutines.Stop(rainbowRootCoroutine);
+        //            rainbowRootCoroutine = null;
+        //        }
 
-                if (strSelectedRootColour == "vanilla")
-                {
-                    //ResetRootColour();
-                    return;
-                }
-                else if (strSelectedRootColour == "rainbow")
-                {
-                    //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
-                    return;
-                }
+        //        if (strSelectedRootColour == "vanilla")
+        //        {
+        //            //ResetRootColour();
+        //            return;
+        //        }
+        //        else if (strSelectedRootColour == "rainbow")
+        //        {
+        //            //rainbowRootCoroutine = MelonCoroutines.Start(RAINBOWROOTS());
+        //            return;
+        //        }
 
-                setSelectedRootColour(strSelectedRootColour);
-                //UpdateRootColour(selectedRootColour);
-            }
-        }
+        //        setSelectedRootColour(strSelectedRootColour);
+        //        //UpdateRootColour(selectedRootColour);
+        //    }
+        //}
 
         // Update roots on material change
-        private void OnRootMaterialChange(object sender = null, EventArgs e = null)
-        {
-            if (e != null)
-            {
-                ValueChange<string> valueChange = (ValueChange<string>)e;
-                selectedRootMaterial = valueChange.Value.ToLower();
+        //private void OnRootMaterialChange(object sender = null, EventArgs e = null)
+        //{
+        //    if (e != null)
+        //    {
+        //        ValueChange<string> valueChange = (ValueChange<string>)e;
+        //        selectedRootMaterial = valueChange.Value.ToLower();
 
-                if (selectedRootMaterial == "vanilla")
-                {
-                    //ResetRootMaterial();
-                    return;
-                }
+        //        if (selectedRootMaterial == "vanilla")
+        //        {
+        //            //ResetRootMaterial();
+        //            return;
+        //        }
 
-                //MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
-            }
-        }
+        //        //MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
+        //    }
+        //}
 
         // Converts preset names to colours
         private void setSelectedLeafColour(string colour)
@@ -382,10 +406,10 @@ namespace RumbleTrees
         }
 
         // This is actually really unnecessary
-        private void setSelectedRootColour(string colour)
-        {
-            if (colour != "random") selectedRootColour = stringToColour(colour);
-        }
+        //private void setSelectedRootColour(string colour)
+        //{
+        //    if (colour != "random") selectedRootColour = stringToColour(colour);
+        //}
 
         // You'll never guess what this one does
         public Color stringToColour(string colour)
@@ -460,16 +484,6 @@ namespace RumbleTrees
                 leafObjects.Add(GameObject.Find(GymTrees[0]));
 
                 VFXsObject = GameObjects.Gym.SCENEVFXSFX.VisualEffects.FallingLeafVFXs.GetGameObject();
-
-                // Fruit pool sounds tasty... and sticky...
-                Il2CppSystem.Collections.Generic.List<PooledMonoBehaviour> fruitPool = PoolManager.Instance.GetPool("Fruit").PooledObjects;
-
-                foreach (PooledMonoBehaviour fruit in fruitPool)
-                {
-                    frootObjects.Add(fruit.gameObject);
-                }
-
-                MelonCoroutines.Start(FRUIT_TIME());
             }
 
             if (sceneName == "Map0")
@@ -497,7 +511,7 @@ namespace RumbleTrees
 
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
-            selectedLeafMaterial = ((string) RumbleTrees.Settings[6].SavedValue).ToLower();
+            selectedLeafMaterial = ((string) RumbleTrees.Settings[5].SavedValue).ToLower();
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
@@ -505,6 +519,7 @@ namespace RumbleTrees
                 if (selectedLeafMaterial != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(selectedLeafMaterial));
                 //if (selectedRootMaterial != "vanilla") MelonCoroutines.Start(UpdateRootMaterial(selectedRootMaterial));
                 //if (strSelectedLeafColour != "vanilla") InitLightmaps();
+                ToggleVFXs((bool)RumbleTrees.Settings[7].Value);
             }
             if (strSelectedLeafColour == "rainbow" && rainbowLeafCoroutine == null)
             {
@@ -529,42 +544,6 @@ namespace RumbleTrees
                 }
             }
         }*/
-
-        private IEnumerator FRUIT_TIME()
-        {
-            for (int i = 0; i < 5; i++)
-            {
-                yield return null;
-            }
-
-            Shader shader = assetBundle.LoadAsset<Shader>("FRUIT");
-            Material newMat = assetBundle.LoadAsset<Material>("New Material 1");
-            newMat.shader = shader;
-
-            Material mat = frootObjects[0].GetComponent<MeshRenderer>().material;
-            Shader shader1 = mat.shader;
-
-            int count = shader1.GetPropertyCount();
-            for (int i = 0; i < count; i++)
-            {
-                if (shader1.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture)
-                {
-                    string name = shader1.GetPropertyName(i);
-                    Debug.Log("Texture property: " + name + " -> " + mat.GetTexture(name));
-                }
-            }
-
-            foreach (GameObject fruit in frootObjects)
-            {
-                MeshRenderer renderer = fruit.GetComponent<MeshRenderer>();
-                Material[] materials = renderer.materials;
-                Array.Resize(ref materials, materials.Length + 1); // HOLY SHIT I HATE ARRAYS
-                materials[materials.Length - 1] = newMat;
-                renderer.materials = materials;
-                //renderer.material.shader = shader;
-            }
-            yield break;
-        }
 
         // I'm not gonna comment on these functions cause it should be obvious from the name
         private void UpdateLeafColour(Color colour)
@@ -954,7 +933,7 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
-                    rainbowHue += (int)RumbleTrees.Settings[8].SavedValue;
+                    rainbowHue += (int)RumbleTrees.Settings[6].SavedValue;
                     FrameCounter = 0;
                 }
                 FrameCounter++;
