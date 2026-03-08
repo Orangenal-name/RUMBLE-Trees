@@ -183,6 +183,8 @@ namespace RumbleTrees
             RumbleTrees.AddToList("Enabled on Ring", true, 0, "Enables the mod on the ring map", new Tags());
             RumbleTrees.AddToList("Enabled in Parks", true, 0, "Enables the mod in parks", new Tags());
 
+            RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
+
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Fruit colour", "FFFFFF", "Type in either \"Rainbow,\" \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" \"Random,\" a shiftstone, or \"roots\" to set the material of the leaves", new Tags());
@@ -198,20 +200,23 @@ namespace RumbleTrees
             RumbleTrees.GetFromFile();
 
             // Assign settings to their respective variables
-            strSelectedLeafColour = ((string)RumbleTrees.Settings[4].Value).ToLower();
-            strSelectedFruitColour = ((string)RumbleTrees.Settings[5].Value).ToLower();
-            selectedLeafMaterial = ((string)RumbleTrees.Settings[6].Value).ToLower();
-            selectedFruitMaterial = ((string)RumbleTrees.Settings[7].Value).ToLower();
+            strSelectedLeafColour = ((string)RumbleTrees.Settings[5].Value).ToLower();
+            strSelectedFruitColour = ((string)RumbleTrees.Settings[6].Value).ToLower();
+            selectedLeafMaterial = ((string)RumbleTrees.Settings[7].Value).ToLower();
+            selectedFruitMaterial = ((string)RumbleTrees.Settings[8].Value).ToLower();
 
             if (strSelectedLeafColour != "vanilla" && strSelectedLeafColour != "rainbow") setSelectedLeafColour(strSelectedLeafColour);
             if (strSelectedFruitColour != "vanilla" && strSelectedFruitColour != "rainbow") setSelectedFruitColour(strSelectedFruitColour);
 
             RumbleTrees.ModSaved += OnSave;
-            RumbleTrees.Settings[4].SavedValueChanged += OnLeafColourChange;
-            RumbleTrees.Settings[5].SavedValueChanged += OnFruitColourChange;
 
-            RumbleTrees.Settings[6].SavedValueChanged += OnLeafMaterialChange;
-            RumbleTrees.Settings[7].SavedValueChanged += OnFruitMaterialChange;
+            RumbleTrees.Settings[4].SavedValueChanged += OnToggleVFXs;
+
+            RumbleTrees.Settings[5].SavedValueChanged += OnLeafColourChange;
+            RumbleTrees.Settings[6].SavedValueChanged += OnFruitColourChange;
+
+            RumbleTrees.Settings[7].SavedValueChanged += OnLeafMaterialChange;
+            RumbleTrees.Settings[8].SavedValueChanged += OnFruitMaterialChange;
 
             UI.instance.UI_Initialized += OnUIInit;
 
@@ -229,6 +234,8 @@ namespace RumbleTrees
 
             if (selectedFruitMaterial.ToLower() != "vanilla")
                 MelonCoroutines.Start(UpdateFruitMaterial(selectedFruitMaterial));
+            else if (strSelectedFruitColour == "rainbow")
+                rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUIT());
             else if (strSelectedFruitColour != "vanilla")
                 UpdateFruitColour(selectedFruitColour);
         }
@@ -299,6 +306,25 @@ namespace RumbleTrees
                 
                 setSelectedLeafColour(strSelectedLeafColour);
                 UpdateLeafColour(selectedLeafColour);
+            }
+        }
+
+        private void OnToggleVFXs(object sender = null, EventArgs e = null)
+        {
+            ToggleVFXs(((ValueChange<bool>)e).Value);
+        }
+
+        private void ToggleVFXs(bool enable)
+        {
+            if (VFXsObject != null)
+            {
+                Transform parent = VFXsObject.transform.parent;
+
+                // I don't want to activate other stuff if the user doesn't want it and afaik there aren't any other mods that enable these so I'm not worried about compatibility
+                parent.GetChild(0).gameObject.active = false;
+                parent.GetChild(1).gameObject.active = false;
+
+                parent.gameObject.active = enable;
             }
         }
 
@@ -497,10 +523,11 @@ namespace RumbleTrees
 
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
-            selectedLeafMaterial = ((string) RumbleTrees.Settings[6].SavedValue).ToLower();
+            selectedLeafMaterial = ((string) RumbleTrees.Settings[7].SavedValue).ToLower();
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
+                ToggleVFXs((bool)RumbleTrees.Settings[4].Value);
                 if (selectedLeafMaterial != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(selectedLeafMaterial));
             }
             if (strSelectedLeafColour == "rainbow" && rainbowLeafCoroutine == null)
@@ -843,7 +870,7 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
-                    rainbowHue += (int)RumbleTrees.Settings[8].SavedValue;
+                    rainbowHue += (int)RumbleTrees.Settings[9].SavedValue;
                     FrameCounter = 0;
                 }
                 FrameCounter++;
@@ -863,7 +890,7 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedFruitColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateFruitColour(selectedFruitColour);
-                    rainbowHue += (int)RumbleTrees.Settings[8].SavedValue;
+                    rainbowHue += (int)RumbleTrees.Settings[9].SavedValue;
                     FrameCounter = 0;
                 }
                 FrameCounter++;
