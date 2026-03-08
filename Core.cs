@@ -192,6 +192,8 @@ namespace RumbleTrees
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
+            RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
+
             RumbleTrees.AddValidation("Leaf colour", new Validation("leaf"));
             RumbleTrees.AddValidation("Fruit colour", new Validation("fruit"));
             RumbleTrees.AddValidation("Leaf material", new Validation("leafMat"));
@@ -271,6 +273,7 @@ namespace RumbleTrees
                     ResetLeafMaterial();
                     ResetFruitMaterial();
                 }
+                ToggleVFXs(enabled);
             }
         }
 
