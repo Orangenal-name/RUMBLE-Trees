@@ -13,12 +13,6 @@
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
-	<ItemGroup>
-	  <None Remove="Resources\GYM0_final.png" />
-	  <None Remove="Resources\MAP0_final.png" />
-	  <None Remove="Resources\Park0_final.png" />
-	  <None Remove="Resources\rumbletrees" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<Reference Include="Assembly-CSharp">
@@ -469,10 +463,6 @@
 
 	<ItemGroup>
 		<Compile Include="Core.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <EmbeddedResource Include="Resources\rumbletrees" />
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
