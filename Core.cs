@@ -185,7 +185,7 @@ namespace RumbleTrees
             RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Fruit colour", "FFFFFF", "Type in either \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Fruit colour", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
             RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a shiftstone to set the material of the leaves", new Tags());
             RumbleTrees.AddToList("Fruit material", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a shiftstone to set the material of the fruits", new Tags());
 
