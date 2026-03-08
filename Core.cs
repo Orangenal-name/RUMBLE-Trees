@@ -31,7 +31,7 @@ namespace RumbleTrees
     {
         // TODO: make root leaves not error on pit
         // TODO: make random colours work for roots as well
-        private string[] themes = ["cherry", "orange", "yellow", "red"];
+        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow"];
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public static string[] mats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
         //public static string[] fruitMats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
@@ -64,7 +64,6 @@ namespace RumbleTrees
             else
             {
                 Input = Input.ToLower();
-                if (Input == "rainbow") return true;
                 if (themes.Contains(Input) && type == "leaf") return true;
                 return false;
             }
@@ -130,7 +129,8 @@ namespace RumbleTrees
             {
                 accurateStoneName = stoneName;
             }
-            else {
+            else
+            {
                 switch (stoneName)
                 {
                     case "flow":
@@ -192,8 +192,6 @@ namespace RumbleTrees
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
-            RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
-
             RumbleTrees.AddValidation("Leaf colour", new Validation("leaf"));
             RumbleTrees.AddValidation("Fruit colour", new Validation("fruit"));
             RumbleTrees.AddValidation("Leaf material", new Validation("leafMat"));
@@ -236,8 +234,6 @@ namespace RumbleTrees
 
             if (selectedFruitMaterial.ToLower() != "vanilla")
                 MelonCoroutines.Start(UpdateFruitMaterial(selectedFruitMaterial));
-            else if (strSelectedFruitColour == "rainbow")
-                rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUIT());
             else if (strSelectedFruitColour != "vanilla")
                 UpdateFruitColour(selectedFruitColour);
         }
@@ -245,7 +241,8 @@ namespace RumbleTrees
         private void OnSave()
         {
             // If the trees in the current scene should be enabled / disabled, do that
-            if ((bool)RumbleTrees.Settings[sceneID].SavedValue != enabled) {
+            if ((bool)RumbleTrees.Settings[sceneID].SavedValue != enabled)
+            {
                 enabled = !enabled;
                 if (enabled)
                 {
@@ -259,11 +256,6 @@ namespace RumbleTrees
                         rainbowLeafCoroutine = MelonCoroutines.Start(RAINBOWLEAVES());
                     }
 
-                    if (strSelectedFruitColour == "rainbow")
-                    {
-                        rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUIT());
-                    }
-
                     //InitLightmaps();
                 }
                 else
@@ -273,7 +265,6 @@ namespace RumbleTrees
                     ResetLeafMaterial();
                     ResetFruitMaterial();
                 }
-                ToggleVFXs(enabled);
             }
         }
 
@@ -286,8 +277,8 @@ namespace RumbleTrees
                 {
                     //InitLightmaps();
                 }
-                
-                ValueChange<string> valueChange = (ValueChange<string>) e;
+
+                ValueChange<string> valueChange = (ValueChange<string>)e;
                 strSelectedLeafColour = valueChange.Value.ToLower();
 
                 if (rainbowLeafCoroutine != null)
@@ -306,7 +297,7 @@ namespace RumbleTrees
                     if (enabled) rainbowLeafCoroutine = MelonCoroutines.Start(RAINBOWLEAVES());
                     return;
                 }
-                
+
                 setSelectedLeafColour(strSelectedLeafColour);
                 UpdateLeafColour(selectedLeafColour);
             }
@@ -366,11 +357,6 @@ namespace RumbleTrees
                 if (strSelectedFruitColour == "vanilla")
                 {
                     ResetFruitColour();
-                    return;
-                }
-                else if (strSelectedFruitColour == "rainbow")
-                {
-                    rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUIT());
                     return;
                 }
 
@@ -526,7 +512,7 @@ namespace RumbleTrees
 
             // UPDATE EVERYTHING!!!
             enabled = (bool)RumbleTrees.Settings[sceneID].Value;
-            selectedLeafMaterial = ((string) RumbleTrees.Settings[7].SavedValue).ToLower();
+            selectedLeafMaterial = ((string)RumbleTrees.Settings[7].SavedValue).ToLower();
             if (enabled)
             {
                 if (strSelectedLeafColour != "vanilla") UpdateLeafColour(selectedLeafColour);
@@ -773,7 +759,7 @@ namespace RumbleTrees
                 foreach (GameObject leafObject in leafObjects)
                 {
                     MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
-                    
+
                     if (materialName == "vanilla")
                     {
                         ResetLeafMaterial();
@@ -873,26 +859,6 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
-                    rainbowHue += (int)RumbleTrees.Settings[9].SavedValue;
-                    FrameCounter = 0;
-                }
-                FrameCounter++;
-                yield return waitForFixedUpdate;
-            }
-        }
-
-        IEnumerator RAINBOWFRUIT()
-        {
-            WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
-            int FrameCounter = 0;
-            int rainbowHue = 0;
-            while (true)
-            {
-                if (FrameCounter >= 2)
-                {
-                    if (rainbowHue >= 360) rainbowHue = 0;
-                    selectedFruitColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
-                    UpdateFruitColour(selectedFruitColour);
                     rainbowHue += (int)RumbleTrees.Settings[9].SavedValue;
                     FrameCounter = 0;
                 }
