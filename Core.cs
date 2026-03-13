@@ -1,10 +1,8 @@
-﻿using Harmony;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
+﻿using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppRUMBLE.Combat.ShiftStones;
 using Il2CppRUMBLE.Managers;
 using Il2CppRUMBLE.Pools;
 using MelonLoader;
-using RumbleModdingAPI;
 using RumbleModdingAPI.RMAPI;
 using RumbleModUI;
 using System.Collections;
@@ -21,7 +19,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.4.0";
+        public const string Version = "2.4.1";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
@@ -105,6 +103,7 @@ namespace RumbleTrees
         ];
         private string[] ParkTrees = [
             "SCENE/PARKMos",
+            "INTERACTABLES/Fruit/Fruit"
         ];
 
         // Presets
@@ -185,9 +184,9 @@ namespace RumbleTrees
             RumbleTrees.AddToList("Enable Falling leaf VFXs", false, 0, "Re-enables the old falling leaf VFXs (May slightly impact performance)", new Tags());
 
             RumbleTrees.AddToList("Leaf colour", "Cherry", "Type in either a preset name or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Fruit colour", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
-            RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a shiftstone to set the material of the leaves", new Tags());
-            RumbleTrees.AddToList("Fruit material", "vanilla", "Type in either \"vanilla,\" \"Random,\" or a shiftstone to set the material of the fruits", new Tags());
+            RumbleTrees.AddToList("Fruit colour", "vanilla", "Type in either \"Vanilla,\" \"Random,\" or a custom colour in one of the supported formats: \n255 255 255\nFFFFFF", new Tags());
+            RumbleTrees.AddToList("Leaf material", "vanilla", "Type in either \"Vanilla,\" \"Random,\" or a shiftstone to set the material of the leaves", new Tags());
+            RumbleTrees.AddToList("Fruit material", "vanilla", "Type in either \"Vanilla,\" \"Random,\" or a shiftstone to set the material of the fruits", new Tags());
 
             RumbleTrees.AddToList("Rainbow speed", 1, "The speed of rainbow leaves (if selected)", new Tags());
 
@@ -447,11 +446,13 @@ namespace RumbleTrees
             UI.instance.AddMod(RumbleTrees);
         }
 
-        //public override void OnSceneWasUnloaded(int buildIndex, string sceneName)
-        //{
-        //    ResetFruitMaterial();
-        //    originalFruitMaterial = null;
-        //}
+        public override void OnSceneWasUnloaded(int buildIndex, string sceneName)
+        {
+            if (sceneName == "Park")
+            {
+                fruitObjects.RemoveAt(fruitObjects.Count - 1);
+            }
+        }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
@@ -496,6 +497,8 @@ namespace RumbleTrees
                 leafObjects.Add(leaves);
 
                 VFXsObject = GameObjects.Park.SCENEVFXSFX.VisualEffects.FallingLeafVFXs.GetGameObject();
+                fruitObjects.Add(GameObject.Find(ParkTrees[1]));
+                UpdateFruitColour(selectedFruitColour);
             }
 
             if (sceneName == "Loader")
