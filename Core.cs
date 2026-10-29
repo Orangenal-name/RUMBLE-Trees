@@ -455,7 +455,7 @@ namespace RumbleTrees
             MelonCoroutines.Start(UpdateLeafMaterial(newVal.ToLower()));
         }
 
-        // Update roots on colour change
+        // Update fruits on colour change
         private void OnFruitColourChange(string oldVal, string newVal)
         {
             if (rainbowFruitCoroutine != null)
@@ -479,7 +479,7 @@ namespace RumbleTrees
             UpdateFruitColour(selectedFruitColour);
         }
 
-        // Update roots on material change
+        // Update fruits on material change
         private void OnFruitMaterialChange(string oldVal, string newVal)
         {
             if (newVal.ToLower() == "vanilla")
@@ -662,20 +662,11 @@ namespace RumbleTrees
                         originalLeafColour = material.GetColor("_Main_color");
                     }
 
-                    // If the material is different we need to use the correct property (but there's no roots on pit)
-                    if (mpref_leafMaterial.Value.ToLower() == "roots" && currentScene != "Pit")
-                    {
-                        //material.SetColor(RC1, shades[1]);
-                        //material.SetColor(RC2, shades[0]);
-                    }
-                    else
-                    {
-                        material.SetColor("_Main_color", colour);
-                    }
+                    material.SetColor("_Main_color", colour);
                 }
 
-                // If it's a shiftstone then the VFXs colour is handled in UpdateLeafMaterial, otherwise just make it the same
-                if (mpref_leafMaterial.Value.ToLower() == "vanilla" || mpref_leafMaterial.Value.ToLower() == "roots")
+                // If it's a shiftstone then the VFXs colour is handled in UpdateLeafMaterial
+                if (mpref_leafMaterial.Value.ToLower() == "vanilla")
                 {
                     UpdateVFXs(colour);
                 }
@@ -750,21 +741,11 @@ namespace RumbleTrees
                         MeshRenderer renderer = leafObject.GetComponent<MeshRenderer>();
                         Material material = renderer.material;
 
-                        if (mpref_leafMaterial.Value.ToLower() == "roots" && mprefs_scenes[sceneID].Value)
-                        {
-                            //material.SetColor(RC1, originalLeafColours[0]);
-                            //material.SetColor(RC2, originalLeafColours[1]);
-                        }
-                        else
-                        {
-                            material.SetColor("_Main_color", originalLeafColour);
-                        }
-
-                        //MelonCoroutines.Start(SwapLightmap(renderer, currentScene, true));
+                        material.SetColor("_Main_color", originalLeafColour);
                     }
                 }
             }
-            if (mpref_leafMaterial.Value.ToLower() == "vanilla" || mpref_leafMaterial.Value.ToLower() == "roots")
+            if (mpref_leafMaterial.Value.ToLower() == "vanilla")
             {
                 ResetVFXs();
             }
