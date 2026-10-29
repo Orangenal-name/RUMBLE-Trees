@@ -466,8 +466,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="Resources\rumbletrees" />
-	  <Resource Include="Resources\rumbletrees" />
+		<EmbeddedResource Include="Resources\rumbletrees" />
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
