@@ -21,7 +21,7 @@ namespace RumbleTrees
 {
     public static class BuildInfo
     {
-        public const string Version = "2.4.1";
+        public const string Version = "3.0.0";
         public const string Name = "RumbleTrees";
         public const string Author = "Orangenal";
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
