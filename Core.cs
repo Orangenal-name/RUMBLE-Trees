@@ -363,7 +363,7 @@ namespace RumbleTrees
                 {
                     if (mpref_leafColour.Value.ToLower() != "vanilla") UpdateLeafColour(selectedLeafColour);
                     if (mpref_fruitColour.Value.ToLower() != "vanilla") UpdateFruitColour(selectedFruitColour);
-                    if (mpref_leafMaterial.Value.ToLower() != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(mpref_leafMaterial.Value));
+                    if (mpref_leafMaterial.Value.ToLower() != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(mpref_leafMaterial.Value.ToLower()));
                     if (mpref_fruitMaterial.Value.ToLower() != "vanilla") MelonCoroutines.Start(UpdateFruitMaterial(mpref_fruitMaterial.Value.ToLower()));
 
                     if (mpref_leafColour.Value.ToLower() == "rainbow")
@@ -598,7 +598,7 @@ namespace RumbleTrees
             {
                 if (mpref_leafColour.Value.ToLower() != "vanilla") UpdateLeafColour(selectedLeafColour);
                 ToggleVFXs(mpref_VFXEnabled.Value);
-                if (mpref_leafMaterial.Value.ToLower() != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(mpref_leafMaterial.Value));
+                if (mpref_leafMaterial.Value.ToLower() != "vanilla") MelonCoroutines.Start(UpdateLeafMaterial(mpref_leafMaterial.Value.ToLower()));
                 if (mpref_leafColour.Value.ToLower() == "rainbow" && rainbowLeafCoroutine == null)
                     rainbowLeafCoroutine = MelonCoroutines.Start(RAINBOWLEAVES());
             }
