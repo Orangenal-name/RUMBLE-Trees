@@ -704,7 +704,10 @@ namespace RumbleTrees
 
         private void UpdateFruitColour(Color colour)
         {
-            if (mpref_fruitMaterial.Value.ToLower() != "vanilla" && mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom)) return;
+            if (mpref_fruitMaterial.Value.ToLower() != "vanilla")
+            {
+                if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom)) return;
+            }
 
             GameObject fruit = fruitObjects.First();
 
@@ -716,6 +719,7 @@ namespace RumbleTrees
                     if (renderer.materials.Length == 3)
                     {
                         renderer.materials.Last().color = colour;
+                        renderer.materials.Last().SetInt("_VanillaOverride", 0);
                         renderer.materials.Last().SetInt("_Enabled", 1);
                     }
                 }
@@ -785,7 +789,10 @@ namespace RumbleTrees
                 {
                     if (renderer.materials.Length == 3)
                     {
-                        renderer.materials.Last().SetInt("_Enabled", 0);
+                        if (mpref_fruitMaterial.Value.ToLower() == "vanilla")
+                            renderer.materials.Last().SetInt("_Enabled", 0);
+                        else
+                            renderer.materials.Last().SetInt("_VanillaOverride", 1);
                     }
                 }
 
@@ -834,7 +841,7 @@ namespace RumbleTrees
             yield break;
         }
 
-        IEnumerator UpdateFruitMaterial(string materialName) // TODO: make it enable the top when material is changed
+        IEnumerator UpdateFruitMaterial(string materialName)
         {
             if (!enabled) yield break;
             if (fruitObjects.Count != 0)
@@ -904,7 +911,7 @@ namespace RumbleTrees
             }
         }
 
-        private void ResetFruitMaterial() // TODO: make it disable the top when material is reset
+        private void ResetFruitMaterial()
         {
             if (currentScene == "Loader") return;
             if (originalFruitMaterial == null)
