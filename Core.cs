@@ -303,6 +303,11 @@ namespace RumbleTrees
 
             mpref_VFXEnabled.OnEntryValueChanged.Subscribe(OnToggleVFXs);
             
+            mpref_rainbowSpeed.OnEntryValueChanged.Subscribe((oldVal, newVal) =>
+            {
+                if (enabled && mpref_fruitColour.Value.ToLower() == "rainbow") UpdateFruitColour(selectedFruitColour);
+            });
+            
             mpref_leafColour.OnEntryValueChanged.Subscribe(OnLeafColourChange);
             mpref_fruitColour.OnEntryValueChanged.Subscribe(OnFruitColourChange);
             
@@ -925,7 +930,7 @@ namespace RumbleTrees
         {
             WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
             int FrameCounter = 0;
-            int rainbowHue = 0;
+            float rainbowHue = 0;
             while (true)
             {
                 if (FrameCounter >= 2)
@@ -933,7 +938,7 @@ namespace RumbleTrees
                     if (rainbowHue >= 360) rainbowHue = 0;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
-                    rainbowHue += mpref_rainbowSpeed.Value;
+                    rainbowHue += mpref_rainbowSpeed.Value / 50f;
                     FrameCounter = 0;
                 }
                 FrameCounter++;
