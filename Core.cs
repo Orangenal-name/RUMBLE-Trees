@@ -431,12 +431,6 @@ namespace RumbleTrees
         // Update fruits on colour change
         private void OnFruitColourChange(string oldVal, string newVal)
         {
-            if (oldVal.ToLower() == "rainbow")
-            {
-                if (enabled)
-                    UpdateFruitColour(selectedFruitColour);
-            }
-
             if (newVal.ToLower() == "rainbow" && enabled)
             {
                 selectedFruitColour = Color.red;
@@ -712,7 +706,8 @@ namespace RumbleTrees
                     {
                         renderer.materials.Last().color = colour;
                         renderer.materials.Last().SetInt("_VanillaOverride", 0);
-                        renderer.materials.Last().SetInt("_Enabled", mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom) ? 0 : 1);
+                        renderer.materials.Last().SetInt("_Enabled",
+                            (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom) && mpref_fruitMaterial.Value.ToLower() != "vanilla") ? 0 : 1);
                         renderer.materials.Last().SetFloat("_RainbowSpeed",
                             (mpref_fruitColour.Value.ToLower() == "rainbow") ? mpref_rainbowSpeed.Value : 0);
                         MelonLogger.Msg(renderer.materials.Last().GetFloat("_RainbowSpeed"));
