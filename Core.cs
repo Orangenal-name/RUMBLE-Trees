@@ -289,7 +289,7 @@ namespace RumbleTrees
             {
                 mprefs_scenes.Add(mprefsCategoryMod.CreateEntry("EnabledIn" + scene, true, "Enabled in " + scene, "Whether the mod should be active in the " + scene.ToLower()));
                 
-                mprefs_scenes.Last().OnEntryValueChanged.Subscribe((bool oldVal, bool newVal) => OnSave(oldVal, newVal, scene));
+                mprefs_scenes.Last().OnEntryValueChanged.Subscribe((bool oldVal, bool newVal) => OnEnabledScenesChange(oldVal, newVal, scene));
             }
             
             mpref_VFXEnabled = mprefsCategoryMod.CreateEntry("VFXEnabled", false, "Falling Leaf VFX Enabled");
@@ -352,7 +352,7 @@ namespace RumbleTrees
             if (enabled) MelonCoroutines.Start(UpdateFruitMaterial(mpref_fruitMaterial.Value.ToLower()));
         }
 
-        private void OnSave(bool oldVal, bool newVal, string scene)
+        private void OnEnabledScenesChange(bool oldVal, bool newVal, string scene)
         {
             // If the trees in the current scene should be enabled / disabled, do that
             if (scene == currentScene)
@@ -391,11 +391,6 @@ namespace RumbleTrees
         // Update leaves upon colour change
         private void OnLeafColourChange(string oldVal, string newVal)
         {
-            if (mpref_leafColour.Value.ToLower() == "vanilla")
-            {
-                //InitLightmaps();
-            }
-
             if (rainbowLeafCoroutine != null)
             {
                 MelonCoroutines.Stop(rainbowLeafCoroutine);
@@ -558,7 +553,6 @@ namespace RumbleTrees
             VFXsObject = null;
             originalLeafColour = new Color();
             originalLeafMaterial = null;
-            //originalFruitMaterial = null;
             originalVFXColours = null;
 
             // Stop the rainbows to avoid errors and epilepsy
@@ -635,8 +629,8 @@ namespace RumbleTrees
                 Transform parent = VFXsObject.transform.parent;
 
                 // I don't want to activate other stuff if the user doesn't want it and afaik there aren't any other mods that enable these so I'm not worried about compatibility
-                parent.GetChild(0).gameObject.active = false;
-                parent.GetChild(1).gameObject.active = false;
+                parent.GetChild(0).gameObject.active = false; // wind velocity source
+                parent.GetChild(1).gameObject.active = false; // wind streak vfx
 
                 parent.gameObject.active = enable;
             }
@@ -668,12 +662,12 @@ namespace RumbleTrees
                 // If it's a shiftstone then the VFXs colour is handled in UpdateLeafMaterial
                 if (mpref_leafMaterial.Value.ToLower() == "vanilla")
                 {
-                    UpdateVFXs(colour);
+                    UpdateVFXsColour(colour);
                 }
             }
         }
 
-        private void UpdateVFXs(Color colour)
+        private void UpdateVFXsColour(Color colour)
         {
             if (!enabled) return;
             if (VFXsObject != null)
@@ -831,7 +825,7 @@ namespace RumbleTrees
                         }
                         MelonLogger.Msg("Got heregasyuhdgyuawtfgd");
                         renderer.material = stringToStone(materialName);
-                        UpdateVFXs(renderer.material.color);
+                        UpdateVFXsColour(renderer.material.color);
                     }
                 }
             }
