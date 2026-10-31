@@ -148,12 +148,14 @@ namespace RumbleTrees
         private const string USER_DATA = "UserData/RumbleTrees/";
         private const string CONFIG_FILE = "config.cfg";
 
+        private static MelonLogger.Instance loggerInstance;
+
         // Takes a shiftstone as a string and return the material of that stone
         public static Material stringToStone(string stoneName)
         {
             if (!Validator.stones.Contains(stoneName))
             {
-                MelonLogger.Error($"\"{stoneName}\" is not the name of a valid shiftstone!");
+                loggerInstance.Error($"\"{stoneName}\" is not the name of a valid shiftstone!");
                 throw new Exception("Provided stone name is invalid");
             }
 
@@ -210,13 +212,13 @@ namespace RumbleTrees
         {
             if (assetBundle == null)
             {
-                MelonLogger.Error("AssetBundle cannot be null!");
+                loggerInstance.Error("AssetBundle cannot be null!");
                 return null;
             }
 
             else if (assetName == null || assetName == "")
             {
-                MelonLogger.Error("No asset name provided!");
+                loggerInstance.Error("No asset name provided!");
                 return null;
             }
 
@@ -243,14 +245,14 @@ namespace RumbleTrees
                 }
                 else
                 {
-                    MelonLogger.Msg("Asset not found!");
+                    loggerInstance.Warning("Asset not found!");
                     return null;
                 }
 
             }
             else
             {
-                MelonLogger.Error("No valid type provided!");
+                loggerInstance.Error("No valid type provided!");
                 return null;
             }
         }
@@ -514,7 +516,7 @@ namespace RumbleTrees
                 }
                 else
                 {
-                    MelonLogger.Error($"\"{colour}\" is somehow not a valid colour");
+                    loggerInstance.Error($"\"{colour}\" is somehow not a valid colour");
                     throw new Exception("Provided string is not in a valid format.");
                 }
             }
@@ -528,7 +530,7 @@ namespace RumbleTrees
             }
             else
             {
-                MelonLogger.Error($"\"{colour}\" is somehow not a valid colour");
+                loggerInstance.Error($"\"{colour}\" is somehow not a valid colour");
                 throw new Exception("Provided string is not in a valid format.");
             }
         }
@@ -688,13 +690,12 @@ namespace RumbleTrees
             }
             else if (currentScene != "Ring") // There aren't VFXs on ring so we don't need a warning
             {
-                MelonLogger.Warning("Leaf VFX object not found!");
+                loggerInstance.Warning("Leaf VFX object not found!");
             }
         }
 
         private void UpdateFruitColour(Color colour)
         {
-            MelonLogger.Msg("upating fuit" + colour);
             if (mpref_fruitColour.Value.ToLower() == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
 
             foreach (GameObject fruitObject in fruitObjects)
@@ -710,7 +711,6 @@ namespace RumbleTrees
                             (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom) && mpref_fruitMaterial.Value.ToLower() != "vanilla") ? 0 : 1);
                         renderer.materials.Last().SetFloat("_RainbowSpeed",
                             (mpref_fruitColour.Value.ToLower() == "rainbow") ? mpref_rainbowSpeed.Value : 0);
-                        MelonLogger.Msg(renderer.materials.Last().GetFloat("_RainbowSpeed"));
                     }
                 }
             }
@@ -818,7 +818,6 @@ namespace RumbleTrees
                             MelonCoroutines.Stop(rainbowLeafCoroutine); // We don't need this running if we can't see it
                             rainbowLeafCoroutine = null;
                         }
-                        MelonLogger.Msg("Got heregasyuhdgyuawtfgd");
                         renderer.material = stringToStone(materialName);
                         UpdateVFXsColour(renderer.material.color);
                     }
@@ -857,7 +856,6 @@ namespace RumbleTrees
                     if (renderer.materials.Length == 3)
                     {
                         renderer.materials.Last().SetInt("_Enabled", mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom) ? 0 : 1);
-                        MelonLogger.Msg(mpref_fruitColour.Value);
                         renderer.materials.Last().SetInt("_VanillaOverride", (mpref_fruitSelector.Value.HasFlag(fruitSelector.Top) && mpref_fruitColour.Value.ToLower() == "vanilla") ? 1 : 0);
                         renderer.materials[1].SetInt("_Enabled", mpref_fruitSelector.Value.HasFlag(fruitSelector.Top) ? 0 : 1);
                     }
@@ -895,7 +893,7 @@ namespace RumbleTrees
             if (currentScene == "Loader") return;
             if (originalFruitMaterial == null)
             {
-                MelonLogger.Msg("originalfruitmat is null");
+                loggerInstance.Warning("originalFruitMaterial is null, skipping reset");
                 return;
             }
             if (fruitObjects.Count != 0)
