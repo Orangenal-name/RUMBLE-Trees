@@ -456,7 +456,7 @@ namespace RumbleTrees
                 rainbowFruitCoroutine = null;
             }
 
-            if (newVal.ToLower() == "rainbow" && rainbowFruitCoroutine == null)
+            if (newVal.ToLower() == "rainbow")
             {
                 if (enabled) rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUITS());
                 return;
@@ -466,8 +466,9 @@ namespace RumbleTrees
                 ResetFruitColour();
                 return;
             }
-
+            
             setSelectedFruitColour(newVal.ToLower());
+            if (!enabled) return;
             UpdateFruitColour(selectedFruitColour);
         }
 
@@ -704,11 +705,6 @@ namespace RumbleTrees
 
         private void UpdateFruitColour(Color colour)
         {
-            if (mpref_fruitMaterial.Value.ToLower() != "vanilla")
-            {
-                if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom)) return;
-            }
-
             GameObject fruit = fruitObjects.First();
 
             foreach (GameObject fruitObject in fruitObjects)
