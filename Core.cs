@@ -358,6 +358,9 @@ namespace RumbleTrees
             if (scene == currentScene)
             {
                 enabled = !enabled;
+                
+                ToggleVFXs(mpref_VFXEnabled.Value && enabled);
+                
                 if (enabled)
                 {
                     if (mpref_leafColour.Value.ToLower() != "vanilla") UpdateLeafColour(selectedLeafColour);
@@ -374,8 +377,6 @@ namespace RumbleTrees
                     {
                         rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUITS());
                     }
-
-                    //InitLightmaps();
                 }
                 else
                 {
@@ -418,21 +419,7 @@ namespace RumbleTrees
 
         private void OnToggleVFXs(bool oldVal, bool newVal)
         {
-            ToggleVFXs(newVal);
-        }
-
-        private void ToggleVFXs(bool enable)
-        {
-            if (VFXsObject != null)
-            {
-                Transform parent = VFXsObject.transform.parent;
-
-                // I don't want to activate other stuff if the user doesn't want it and afaik there aren't any other mods that enable these so I'm not worried about compatibility
-                parent.GetChild(0).gameObject.active = false;
-                parent.GetChild(1).gameObject.active = false;
-
-                parent.gameObject.active = enable;
-            }
+            ToggleVFXs(enabled && newVal);
         }
 
         // Update leaves upon material change
@@ -638,6 +625,20 @@ namespace RumbleTrees
             if (mpref_fruitColour.Value.ToLower() == "rainbow" && rainbowFruitCoroutine == null)
             {
                 rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUITS());
+            }
+        }
+        
+        private void ToggleVFXs(bool enable)
+        {
+            if (VFXsObject != null)
+            {
+                Transform parent = VFXsObject.transform.parent;
+
+                // I don't want to activate other stuff if the user doesn't want it and afaik there aren't any other mods that enable these so I'm not worried about compatibility
+                parent.GetChild(0).gameObject.active = false;
+                parent.GetChild(1).gameObject.active = false;
+
+                parent.gameObject.active = enable;
             }
         }
 
