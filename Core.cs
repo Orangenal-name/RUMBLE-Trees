@@ -935,7 +935,8 @@ namespace RumbleTrees
             {
                 if (FrameCounter >= 2)
                 {
-                    if (rainbowHue >= 360) rainbowHue = 0;
+                    if (rainbowHue >= 360) rainbowHue -= 360;
+                    if (rainbowHue < 0) rainbowHue += 360;
                     selectedLeafColour = Color.HSVToRGB(rainbowHue / 360f, 1f, 1f);
                     UpdateLeafColour(selectedLeafColour);
                     rainbowHue += mpref_rainbowSpeed.Value / 50f;
