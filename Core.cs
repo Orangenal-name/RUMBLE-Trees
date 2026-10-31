@@ -303,7 +303,7 @@ namespace RumbleTrees
             mpref_fruitSelector.OnEntryValueChanged.Subscribe(OnFruitMatAreaChange);
 
             if (mpref_leafColour.Value.ToLower() != "vanilla" && mpref_leafColour.Value.ToLower() != "rainbow") setSelectedLeafColour(mpref_leafColour.Value);
-            if (mpref_fruitColour.Value.ToLower() != "vanilla" && mpref_fruitColour.Value.ToLower() != "rainbow") setSelectedFruitColour(mpref_fruitColour.Value);
+            if (mpref_fruitColour.Value.ToLower() != "vanilla" && mpref_fruitColour.Value.ToLower() != "rainbow") setSelectedFruitColour(mpref_fruitColour.Value.ToLower());
 
             mpref_VFXEnabled.OnEntryValueChanged.Subscribe(OnToggleVFXs);
             
@@ -519,7 +519,7 @@ namespace RumbleTrees
                 }
                 else
                 {
-                    MelonLogger.Error("Somehow not a valid colour");
+                    MelonLogger.Error($"\"{colour}\" is somehow not a valid colour");
                     throw new Exception("Provided string is not in a valid format.");
                 }
             }
@@ -620,6 +620,8 @@ namespace RumbleTrees
             {
                 rainbowFruitCoroutine = MelonCoroutines.Start(RAINBOWFRUITS());
             }
+            
+            if (mpref_fruitColour.Value.ToLower() == "random") UpdateFruitColour(selectedFruitColour);
         }
         
         private void ToggleVFXs(bool enable)
@@ -670,6 +672,7 @@ namespace RumbleTrees
         private void UpdateVFXsColour(Color colour)
         {
             if (!enabled) return;
+            
             if (VFXsObject != null)
             {
                 VisualEffect leafVFX;
@@ -700,7 +703,7 @@ namespace RumbleTrees
 
         private void UpdateFruitColour(Color colour)
         {
-            GameObject fruit = fruitObjects.First();
+            if (mpref_fruitColour.Value.ToLower() == "random") colour = new Color((float)rand.NextDouble(), (float)rand.NextDouble(), (float)rand.NextDouble());
 
             foreach (GameObject fruitObject in fruitObjects)
             {
