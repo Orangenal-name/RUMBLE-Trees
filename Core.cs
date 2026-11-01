@@ -29,7 +29,7 @@ namespace RumbleTrees
 
     public class Validator : ValueValidator
     {
-        private string[] themes = ["cherry", "orange", "yellow", "red", "rainbow"];
+        private string[] themes = ["cherry", "orange", "yellow", "red"];
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public static string[] mats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
         private string type;
@@ -74,6 +74,12 @@ namespace RumbleTrees
 
                 return false;
             }
+            
+            if (Input.ToLower() == "rainbow")
+            {
+                lastValidValue = value;
+                return true;
+            }
 
             if (Regex.IsMatch(Input, rgbPattern) || Regex.IsMatch(Input, hexPattern))
             {
@@ -83,7 +89,12 @@ namespace RumbleTrees
             else
             {
                 Input = Input.ToLower();
-                if (themes.Contains(Input) && type == "leaf") return true;
+                if (themes.Contains(Input) && type == "leaf")
+                {
+                    lastValidValue = value;
+                    return true;
+                }
+                
                 return false;
             }
         }
