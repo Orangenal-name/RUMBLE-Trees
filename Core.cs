@@ -8,6 +8,7 @@ using UIFramework;
 using System.Collections;
 using System.Text.RegularExpressions;
 using MelonLoader.Preferences;
+using UIFramework.Models;
 using UnityEngine;
 using UnityEngine.VFX;
 using BuildInfo = RumbleTrees.BuildInfo;
@@ -32,10 +33,12 @@ namespace RumbleTrees
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public static string[] mats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
         private string type;
+        private object lastValidValue;
 
-        public Validator(string type)
+        public Validator(string type, object defaultValue)
         {
             this.type = type;
+            this.lastValidValue = defaultValue;
         }
 
         public override bool IsValid(object value)
@@ -50,16 +53,31 @@ namespace RumbleTrees
             string rgbPattern = @"^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\s(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$";
             string hexPattern = @"^#?[0-9A-Fa-f]{6}$";
 
-            if (Input.ToLower() == "random") return true;
-            if (Input.ToLower() == "vanilla") return true;
+            if (Input.ToLower() == "random")
+            {
+                lastValidValue = value;
+                return true;
+            }
+            if (Input.ToLower() == "vanilla")
+            {
+                lastValidValue = value;
+                return true;
+            }
 
             if (type.EndsWith("Mat"))
             {
-                return mats.Contains(Input.ToLower());
+                if (mats.Contains(Input.ToLower()))
+                {
+                    lastValidValue = value;
+                    return true;
+                }
+
+                return false;
             }
 
             if (Regex.IsMatch(Input, rgbPattern) || Regex.IsMatch(Input, hexPattern))
             {
+                lastValidValue = value;
                 return true;
             }
             else
@@ -72,7 +90,12 @@ namespace RumbleTrees
 
         public override object EnsureValid(object value)
         {
-            return value;
+            if (!IsValid(value))
+            {
+                Core.loggerInstance.Warning("New value \"" + value + "\" was marked invalid. Reverting to previous value: " + lastValidValue);
+                return lastValidValue;
+            }
+            else return value;
         }
     }
 
@@ -148,7 +171,7 @@ namespace RumbleTrees
         private const string USER_DATA = "UserData/RumbleTrees/";
         private const string CONFIG_FILE = "config.cfg";
 
-        private static MelonLogger.Instance loggerInstance;
+        internal static MelonLogger.Instance loggerInstance;
 
         // Takes a shiftstone as a string and return the material of that stone
         public static Material stringToStone(string stoneName)
@@ -274,15 +297,15 @@ namespace RumbleTrees
 
             mpref_leafColour = mprefsCategoryLeaves.CreateEntry("LeafColour", "Cherry", "Leaf Colour",
                 "The colour to set the tree leaves (moss) to. Can be either \"Vanilla,\" \"Random,\" \"Rainbow,\" or a custom colour in one of the supported formats: 255 255 255 / FFFFFF",
-                validator: new Validator("leaf"));
+                validator: new Validator("leaf", "Cherry"));
             mpref_leafMaterial = mprefsCategoryLeaves.CreateEntry("LeafMaterial", "Vanilla", "Leaf Material",
-                "Allows you to turn the trees into shiftstones.", validator: new Validator("leafMat"));
+                "Allows you to turn the trees into shiftstones.", validator: new Validator("leafMat", "Vanilla"));
             
             mpref_fruitColour = mprefsCategoryFruits.CreateEntry("FruitColour", "Vanilla", "Fruit Colour",
                 "The colour to set the fruits to. Can be either \"Vanilla,\" \"Random,\" \"Rainbow,\" or a custom colour in one of the supported formats: 255 255 255 / FFFFFF",
-                validator: new Validator("fruit"));
+                validator: new Validator("fruit", "Vanilla"));
             mpref_fruitMaterial = mprefsCategoryFruits.CreateEntry("FruitMaterial", "Vanilla", "Fruit Material",
-                "Allows you to turn the fruit into shiftstones.", validator: new Validator("fruitMat"));
+                "Allows you to turn the fruit into shiftstones.", validator: new Validator("fruitMat", "Vanilla"));
             mpref_fruitSelector = mprefsCategoryFruits.CreateEntry("FruitSelector", fruitSelector.Bottom,
                 "Fruit material area", "The part of the fruit that should turn into the shiftstone.");
 
@@ -295,7 +318,7 @@ namespace RumbleTrees
             
             mpref_VFXEnabled = mprefsCategoryMod.CreateEntry("VFXEnabled", false, "Falling Leaf VFX Enabled");
             mpref_rainbowSpeed = mprefsCategoryMod.CreateEntry("RainbowSpeed", 50, "Rainbow speed",
-                "The speed of rainbow leaves / fruits (if selected)");
+                "The speed of rainbow leaves / fruits (if selected)", validator: new ValueRange<int>(-6000, 6000));
             
 
             if (mpref_leafColour.Value.ToLower() != "vanilla" && mpref_leafColour.Value.ToLower() != "rainbow") setSelectedLeafColour(mpref_leafColour.Value);
@@ -323,7 +346,8 @@ namespace RumbleTrees
             customFruitMatTop = new(LoadAsset<Material>("FruitMatTop", assetBundle));
             customFruitMatTop.hideFlags = HideFlags.DontUnloadUnusedAsset;
 
-            LoggerInstance.Msg("Initialised.");
+            loggerInstance = LoggerInstance;
+            loggerInstance.Msg("Initialised.");
         }
 
         public override void OnLateInitializeMelon()
