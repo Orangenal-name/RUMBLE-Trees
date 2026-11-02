@@ -970,10 +970,13 @@ namespace RumbleTrees
 
                     renderer.material = originalFruitMaterial;
                     
-                    if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom))
-                        renderer.materials[1]?.SetInt("_Enabled", 0);
-                    if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Top))
-                        renderer.materials.Last().SetInt("_VanillaOverride", 0);
+                    if (renderer.materials.Length == 3)
+                    {
+                        if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Bottom))
+                            renderer.materials[1]?.SetInt("_Enabled", 0);
+                        if (mpref_fruitSelector.Value.HasFlag(fruitSelector.Top))
+                            renderer.materials.Last().SetInt("_VanillaOverride", 0);
+                    }
                 }
                 
                 if (enabled && mpref_fruitColour.Value.ToLower() != "vanilla")
