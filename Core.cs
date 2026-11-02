@@ -9,6 +9,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using MelonLoader.Preferences;
 using UIFramework.Models;
+using UIFramework.UiExtensions;
 using UnityEngine;
 using UnityEngine.VFX;
 using BuildInfo = RumbleTrees.BuildInfo;
@@ -27,18 +28,26 @@ namespace RumbleTrees
         public const string DownloadLink = "https://thunderstore.io/c/rumble/p/Orangenal/RumbleTrees/";
     }
 
-    public class Validator : ValueValidator
+    /*
+     * The below class is tailored to specifically work for this mod, with little regard for future maintainability, as I plan on rewriting it at some point.
+     * If you want to do a similar thing, I would recommend making it a Validator<T> with MelonPreferences_Entry<T> for the entry reference.
+     * This would also allow for inheriting it to things like Validator<string>, so you don't need to check the type of the value in IsValid.
+     */
+    public class Validator : TextInputBehaviorDescriptor
     {
         private string[] themes = ["cherry", "orange", "yellow", "red"];
         public static string[] stones = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge"];
         public static string[] mats = ["flow", "vigor", "volatile", "adamant", "charge", "guard", "stubborn", "surge", "vanilla"];
         private string type;
         private object lastValidValue;
+        private readonly Func<MelonPreferences_Entry<string>> getEntry;
 
-        public Validator(string type, object defaultValue)
+        public Validator(string type, object defaultValue, Func<MelonPreferences_Entry<string>> getEntry)
         {
             this.type = type;
             this.lastValidValue = defaultValue;
+            this.getEntry = getEntry;
+            this.IsReadOnly = false;
         }
 
         public override bool IsValid(object value)
@@ -103,10 +112,26 @@ namespace RumbleTrees
         {
             if (!IsValid(value))
             {
-                Core.loggerInstance.Warning("New value \"" + value + "\" was marked invalid. Reverting to previous value: " + lastValidValue);
+                Core.loggerInstance.Warning($"New value \"{value}\" was determined to be invalid. Reverting to previous value: \"{lastValidValue}\"");
+                MelonPreferences_Entry<string> entry = getEntry();
+                if (entry == null)
+                    throw new NullReferenceException($"Entry with value \"{value}\" is null!");
+                else
+                    MelonCoroutines.Start(DisplayError(entry));
                 return lastValidValue;
             }
             else return value;
+        }
+
+        private IEnumerator DisplayError(MelonPreferences_Entry<string> entry)
+        {
+            entry.EditedValue = "<#FF0000>Invalid input!";
+            this.IsReadOnly = true;
+            
+            yield return new WaitForSeconds(2);
+            entry.EditedValue = (string)lastValidValue;
+            this.IsReadOnly = false;
+            Core.UIFModel.RequestUpdateUI();
         }
     }
 
@@ -128,6 +153,8 @@ namespace RumbleTrees
         private Material originalFruitMaterial = null;
         private Il2CppStructArray<GradientColorKey> originalVFXColours = null;
 
+        internal static MelonModel UIFModel;
+        
         private MelonPreferences_Category mprefsCategoryMod;
         private MelonPreferences_Category mprefsCategoryLeaves;
         private MelonPreferences_Category mprefsCategoryFruits;
@@ -308,15 +335,14 @@ namespace RumbleTrees
 
             mpref_leafColour = mprefsCategoryLeaves.CreateEntry("LeafColour", "Cherry", "Leaf Colour",
                 "The colour to set the tree leaves (moss) to. Can be either \"Vanilla,\" \"Random,\" \"Rainbow,\" or a custom colour in one of the supported formats: 255 255 255 / FFFFFF",
-                validator: new Validator("leaf", "Cherry"));
+                validator: new Validator("leaf", "Cherry" , () => mpref_leafColour));
             mpref_leafMaterial = mprefsCategoryLeaves.CreateEntry("LeafMaterial", "Vanilla", "Leaf Material",
-                "Allows you to turn the trees into shiftstones.", validator: new Validator("leafMat", "Vanilla"));
-            
+                "Allows you to turn the trees into shiftstones.", validator: new Validator("leafMat", "Vanilla", () => mpref_leafMaterial));
             mpref_fruitColour = mprefsCategoryFruits.CreateEntry("FruitColour", "Vanilla", "Fruit Colour",
                 "The colour to set the fruits to. Can be either \"Vanilla,\" \"Random,\" \"Rainbow,\" or a custom colour in one of the supported formats: 255 255 255 / FFFFFF",
-                validator: new Validator("fruit", "Vanilla"));
+                validator: new Validator("fruit", "Vanilla", () => mpref_fruitColour));
             mpref_fruitMaterial = mprefsCategoryFruits.CreateEntry("FruitMaterial", "Vanilla", "Fruit Material",
-                "Allows you to turn the fruit into shiftstones.", validator: new Validator("fruitMat", "Vanilla"));
+                "Allows you to turn the fruit into shiftstones.", validator: new Validator("fruitMat", "Vanilla", () => mpref_fruitMaterial));
             mpref_fruitSelector = mprefsCategoryFruits.CreateEntry("FruitSelector", fruitSelector.Bottom,
                 "Fruit material area", "The part of the fruit that should turn into the shiftstone.");
 
@@ -349,7 +375,7 @@ namespace RumbleTrees
             mpref_fruitMaterial.OnEntryValueChanged.Subscribe(OnFruitMaterialChange);
             mpref_fruitSelector.OnEntryValueChanged.Subscribe(OnFruitMatAreaChange);
 
-            UI.RegisterMelon(this, mprefsCategoryMod, mprefsCategoryFruits, mprefsCategoryLeaves);
+            UIFModel = UI.RegisterMelon(this, mprefsCategoryMod, mprefsCategoryFruits, mprefsCategoryLeaves);
             
             assetBundle = AssetBundles.LoadAssetBundleFromStream(this, "RumbleTrees.rumbletrees");
             customFruitMatBottom = new(LoadAsset<Material>("FruitMatBottom", assetBundle));
